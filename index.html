@@ -171,51 +171,179 @@ document.querySelectorAll('.tab-btn').forEach(button => {
 function refreshStock() {
     const stockList = document.getElementById('stock-list');
     stockList.innerHTML = stock.map(item => `
-        <div class="item">
+        <div class="item" onclick="showProductDetails(${item.id})" 
+             oncontextmenu="showProductMenu(event, ${item.id})"
+             data-id="${item.id}">
             <div class="item-info">
                 <div class="item-name">${item.name}</div>
-                <div class="item-detail">Idadi: ${item.quantity} | Bei: ${formatCurrency(item.price)}</div>
+                <div class="item-detail">
+                    Idadi: ${item.quantity} | 
+                    Bei: ${formatCurrency(item.price)} |
+                    Faida: ${formatCurrency(item.price - item.cost)}
+                </div>
             </div>
-            <div class="item-amount">${item.quantity}</div>
+            <div class="item-amount" style="color: ${getStockColor(item.quantity, item.minStock)}">
+                ${item.quantity}
+            </div>
         </div>
     `).join('');
 }
 
-function showAddProductForm() {
-    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-    document.getElementById('add-product-form').classList.add('active');
+function getStockColor(quantity, minStock) {
+    if (quantity === 0) return '#e74c3c'; // Red - out of stock
+    if (quantity <= minStock) return '#f39c12'; // Orange - low stock
+    return '#2ecc71'; // Green - good stock
 }
 
-function hideAddProductForm() {
-    document.getElementById('add-product-form').classList.remove('active');
-    document.getElementById('bidhaa').classList.add('active');
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.remove('active');
-        if (btn.getAttribute('data-tab') === 'bidhaa') btn.classList.add('active');
-    });
+function showProductDetails(productId) {
+    const product = stock.find(p => p.id === productId);
+    if (!product) return;
+    
+    const details = `
+📦 <strong>${product.name}</strong>
+
+Idadi: ${product.quantity}
+Bei ya Kuuza: ${formatCurrency(product.price)}
+Bei ya Ununuzi: ${formatCurrency(product.cost)}
+Faida kwa Kipande: ${formatCurrency(product.price - product.cost)}
+Faida kwa Asilimia: ${Math.round(((product.price - product.cost) / product.cost) * 100)}%
+
+Jumla ya Thamani: ${formatCurrency(product.quantity * product.price)}
+    `;
+    
+    const action = prompt(details + "\n\nChagua kitendo:\n1. Badilisha bei\n2. Badilisha idadi\n3. Fanya muuzo\n4. Ondoa", "3");
+    
+    switch(action) {
+        case "1": changeProductPrice(productId); break;
+        case "2": changeProductQuantity(productId); break;
+        case "3": makeSaleFromProduct(productId); break;
+        case "4": deleteProduct(productId); break;
+        default: break;
+    }
 }
 
-function addProduct() {
-    const name = document.getElementById('product-name').value;
-    const quantity = parseInt(document.getElementById('product-quantity').value) || 0;
-    const price = parseInt(document.getElementById('product-price').value) || 0;
-    const cost = parseInt(document.getElementById('product-cost').value) || 0;
+function makeSaleFromProduct(productId) {
+    const product = stock.find(p => p.id === productId);
+    if (!product) return;
     
-    if (!name) { alert('Ingiza jina la bidhaa'); return; }
+    const customer = prompt(`Mteja anunua ${product.name}. Jina la mteja:`, "Mteja");
+    if (!customer) return;
     
-    stock.push({ id: Date.now(), name, quantity, price, cost, minStock: 10 });
+    const quantity = parseInt(prompt(`Idadi ya ${product.name} (Zipo: ${product.quantity}):`, "1")) || 1;
+    if (quantity > product.quantity) {
+        alert(`Una ${product.quantity} tu!`);
+        return;
+    }
+    
+    const total = quantity * product.price;
+    
+    // Add sale
+    const newSale = {
+        id: Date.now(),
+        customer: customer,
+        product: product.name,
+        quantity: quantity,
+        total: total,
+        date: new Date().toISOString(),
+        time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+    };
+    
+    sales.push(newSale);
+    saveData('biashara_sales', sales);
+    
+    // Update stock
+    product.quantity -= quantity;
     saveData('biashara_stock', stock);
     
-    document.getElementById('product-name').value = '';
-    document.getElementById('product-quantity').value = '';
-    document.getElementById('product-price').value = '';
-    document.getElementById('product-cost').value = '';
-    
-    hideAddProductForm();
+    // Refresh everything
     refreshStock();
+    refreshSales();
     refreshBuyList();
-    alert(`✅ ${name} imeongezwa`);
+    updateCashCalculation();
+    
+    alert(`✅ ${customer} amenunua ${product.name} × ${quantity} = ${formatCurrency(total)}`);
 }
+
+function changeProductPrice(productId) {
+    const product = stock.find(p => p.id === productId);
+    if (!product) return;
+    
+    const newPrice = parseInt(prompt(`Bei mpya ya ${product.name} (sasa: ${formatCurrency(product.price)}):`, product.price));
+    if (newPrice && newPrice > 0) {
+        product.price = newPrice;
+        saveData('biashara_stock', stock);
+        refreshStock();
+        alert(`✅ Bei ya ${product.name} imebadilishwa: ${formatCurrency(newPrice)}`);
+    }
+}
+
+function changeProductQuantity(productId) {
+    const product = stock.find(p => p.id === productId);
+    if (!product) return;
+    
+    const newQuantity = parseInt(prompt(`Idadi mpya ya ${product.name} (sasa: ${product.quantity}):`, product.quantity));
+    if (!isNaN(newQuantity) && newQuantity >= 0) {
+        product.quantity = newQuantity;
+        saveData('biashara_stock', stock);
+        refreshStock();
+        refreshBuyList();
+        alert(`✅ Idadi ya ${product.name} imebadilishwa: ${newQuantity}`);
+    }
+}
+
+function deleteProduct(productId) {
+    if (!confirm("Unahakika unataka kufuta bidhaa hii?")) return;
+    
+    const productIndex = stock.findIndex(p => p.id === productId);
+    if (productIndex !== -1) {
+        const productName = stock[productIndex].name;
+        stock.splice(productIndex, 1);
+        saveData('biashara_stock', stock);
+        refreshStock();
+        refreshBuyList();
+        alert(`✅ ${productName} imefutwa`);
+    }
+}
+
+function showProductMenu(event, productId) {
+    event.preventDefault();
+    
+    const menu = `
+Chagua kitendo:
+1. Ongeza idadi
+2. Punguza idadi
+3. Badilisha bei
+4. Fanya muuzo
+5. Ondoa
+`;
+    
+    const choice = prompt(menu, "1");
+    const product = stock.find(p => p.id === productId);
+    
+    switch(choice) {
+        case "1": 
+            const addQty = parseInt(prompt(`Ongeza idadi gani ya ${product.name}?`, "10"));
+            if (addQty > 0) {
+                product.quantity += addQty;
+                saveData('biashara_stock', stock);
+                refreshStock();
+                alert(`✅ ${addQty} ${product.name} zimeongezwa`);
+            }
+            break;
+        case "2":
+            const reduceQty = parseInt(prompt(`Punguza idadi gani ya ${product.name}?`, "1"));
+            if (reduceQty > 0 && reduceQty <= product.quantity) {
+                product.quantity -= reduceQty;
+                saveData('biashara_stock', stock);
+                refreshStock();
+                alert(`✅ ${reduceQty} ${product.name} zimepunguzwa`);
+            }
+            break;
+        case "3": changeProductPrice(productId); break;
+        case "4": makeSaleFromProduct(productId); break;
+        case "5": deleteProduct(productId); break;
+    }
+    }
 
 // =========== SALES MANAGEMENT ===========
 function refreshSales() {
