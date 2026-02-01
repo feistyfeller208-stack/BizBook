@@ -900,6 +900,275 @@ function formatCurrency(amount) {
     }).format(amount);
 }
 
+// =========== RECEIPT & EXPORT FUNCTIONS ===========
+function generateDailyReceipt() {
+    const today = new Date().toLocaleDateString('sw-TZ');
+    const todaySales = sales.filter(sale => 
+        new Date(sale.date).toDateString() === new Date().toDateString()
+    );
+    
+    const totalSales = todaySales.reduce((sum, sale) => sum + sale.total, 0);
+    const expenses = cash.expenses || 0;
+    const profit = totalSales - expenses;
+    
+    // Create receipt text
+    let receipt = `📊 RIPOTI YA LEO\n`;
+    receipt += `Tarehe: ${today}\n`;
+    receipt += `══════════════════════\n\n`;
+    
+    // Add sales summary
+    receipt += `MAUZO YA LEO:\n`;
+    receipt += `══════════════════════\n`;
+    
+    if (todaySales.length === 0) {
+        receipt += `Hakuna mauzo leo\n`;
+    } else {
+        // Group sales by product
+        const productSales = {};
+        todaySales.forEach(sale => {
+            if (!productSales[sale.product]) {
+                productSales[sale.product] = { quantity: 0, total: 0 };
+            }
+            productSales[sale.product].quantity += sale.quantity;
+            productSales[sale.product].total += sale.total;
+        });
+        
+        Object.entries(productSales).forEach(([product, data]) => {
+            receipt += `${product}: ${data.quantity} × ${formatCurrency(data.total / data.quantity)} = ${formatCurrency(data.total)}\n`;
+        });
+        
+        receipt += `\nJumla Mauzo: ${formatCurrency(totalSales)}\n`;
+    }
+    
+    receipt += `\nMATUMIZI YA LEO:\n`;
+    receipt += `══════════════════════\n`;
+    receipt += `${formatCurrency(expenses)}\n`;
+    
+    receipt += `\nFEDHA:\n`;
+    receipt += `══════════════════════\n`;
+    receipt += `Asubuhi: ${formatCurrency(cash.morning || 0)}\n`;
+    receipt += `Mauzo: ${formatCurrency(totalSales)}\n`;
+    receipt += `Matumizi: ${formatCurrency(expenses)}\n`;
+    receipt += `────────────────────\n`;
+    receipt += `Jioni (inapaswa kuwa): ${formatCurrency((cash.morning || 0) + totalSales - expenses)}\n`;
+    
+    receipt += `\nFAIDA YA LEO:\n`;
+    receipt += `══════════════════════\n`;
+    receipt += `Mauzo: ${formatCurrency(totalSales)}\n`;
+    receipt += `- Matumizi: ${formatCurrency(expenses)}\n`;
+    receipt += `────────────────────\n`;
+    receipt += `FAIDA: ${formatCurrency(profit)}\n`;
+    
+    receipt += `\nMADENI:\n`;
+    receipt += `══════════════════════\n`;
+    const activeDebts = debts.filter(debt => debt.amount > 0);
+    if (activeDebts.length === 0) {
+        receipt += `Hakuna madeni\n`;
+    } else {
+        activeDebts.forEach(debt => {
+            receipt += `${debt.customer}: ${formatCurrency(debt.amount)} (tarehe: ${debt.date})\n`;
+        });
+        const totalDebt = activeDebts.reduce((sum, debt) => sum + debt.amount, 0);
+        receipt += `\nJumla Madeni: ${formatCurrency(totalDebt)}\n`;
+    }
+    
+    receipt += `\nBIDHAA ZA KUNUNUA:\n`;
+    receipt += `══════════════════════\n`;
+    let itemsToBuy = [];
+    let buyTotal = 0;
+    
+    stock.forEach(item => {
+        if (item.quantity <= item.minStock) {
+            const needed = item.orderQuantity || (item.minStock * 3 - item.quantity);
+            const cost = needed * item.cost;
+            itemsToBuy.push({ name: item.name, needed: needed, unit: item.unit, cost: cost });
+            buyTotal += cost;
+        }
+    });
+    
+    if (itemsToBuy.length === 0) {
+        receipt += `Huna hitaji la kununua\n`;
+    } else {
+        itemsToBuy.forEach(item => {
+            receipt += `${item.name}: ${item.needed}${item.unit} × ${formatCurrency(item.cost / item.needed)} = ${formatCurrency(item.cost)}\n`;
+        });
+        receipt += `\nJumla ya Kununua: ${formatCurrency(buyTotal)}\n`;
+    }
+    
+    receipt += `\n────────────────────\n`;
+    receipt += `Imetolewa na: BizBook\n`;
+    receipt += `${new Date().toLocaleString('sw-TZ')}\n`;
+    
+    // Create downloadable text file
+    const blob = new Blob([receipt], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ripoti-${today.replace(/\//g, '-')}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    // Also show alert with option to copy
+    if (confirm("✅ Ripoti imepakuliwa!\n\nUnataka kuiona hapa?")) {
+        alert(receipt);
+    }
+}
+
+function generateCustomerReceipt(customerName) {
+    const customerSales = sales.filter(sale => 
+        sale.customer.toLowerCase().includes(customerName.toLowerCase()) ||
+        customerName.toLowerCase().includes(sale.customer.toLowerCase())
+    );
+    
+    if (customerSales.length === 0) {
+        alert(`Hakuna mauzo ya "${customerName}"`);
+        return;
+    }
+    
+    const totalSpent = customerSales.reduce((sum, sale) => sum + sale.total, 0);
+    
+    let receipt = `📄 RISITI YA MT EJA\n`;
+    receipt += `Mteja: ${customerName}\n`;
+    receipt += `Tarehe: ${new Date().toLocaleDateString('sw-TZ')}\n`;
+    receipt += `══════════════════════\n\n`;
+    
+    receipt += `HISTORIA YA MANUNUZI:\n`;
+    receipt += `══════════════════════\n`;
+    
+    customerSales.forEach(sale => {
+        const saleDate = new Date(sale.date).toLocaleDateString('sw-TZ');
+        receipt += `${saleDate}: ${sale.product} × ${sale.quantity}${sale.unit || ''} = ${formatCurrency(sale.total)}\n`;
+    });
+    
+    receipt += `\n────────────────────\n`;
+    receipt += `JUMLA YOTE: ${formatCurrency(totalSpent)}\n`;
+    
+    // Check if customer has debt
+    const customerDebt = debts.find(debt => 
+        debt.customer.toLowerCase().includes(customerName.toLowerCase()) ||
+        customerName.toLowerCase().includes(debt.customer.toLowerCase())
+    );
+    
+    if (customerDebt && customerDebt.amount > 0) {
+        receipt += `\nDENI LINALODAIWA:\n`;
+        receipt += `══════════════════════\n`;
+        receipt += `${formatCurrency(customerDebt.amount)}\n`;
+        receipt += `Tarehe ya kuanza: ${customerDebt.date}\n`;
+        if (customerDebt.phone) {
+            receipt += `Simu: ${customerDebt.phone}\n`;
+        }
+    }
+    
+    receipt += `\n────────────────────\n`;
+    receipt += `Asante kwa kuwa mteja wetu!\n`;
+    receipt += `Imetolewa na BizBook\n`;
+    
+    // Create downloadable file
+    const blob = new Blob([receipt], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `risiti-${customerName.replace(/\s+/g, '-')}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    // Ask if want to send via WhatsApp
+    if (confirm(`✅ Risiti ya ${customerName} imepakuliwa!\n\nUnataka kumtumia kwa WhatsApp?`)) {
+        const phone = customerDebt?.phone || prompt(`Namba ya ${customerName}:`, "");
+        if (phone && phone.length >= 9) {
+            window.open(`https://wa.me/${phone}?text=${encodeURIComponent(receipt)}`, '_blank');
+        }
+    }
+}
+
+function generateStockReport() {
+    let report = `📦 RIPOTI YA BIDHAA\n`;
+    report += `Tarehe: ${new Date().toLocaleDateString('sw-TZ')}\n`;
+    report += `══════════════════════\n\n`;
+    
+    report += `BIDHAA ZOTE:\n`;
+    report += `══════════════════════\n`;
+    
+    if (stock.length === 0) {
+        report += `Hakuna bidhaa zilizosajiliwa\n`;
+    } else {
+        // Sort by quantity (lowest first)
+        const sortedStock = [...stock].sort((a, b) => a.quantity - b.quantity);
+        
+        sortedStock.forEach(item => {
+            const stockValue = item.quantity * item.price;
+            const stockCost = item.quantity * item.cost;
+            const profitIfSold = stockValue - stockCost;
+            
+            report += `${item.name}\n`;
+            report += `  Idadi: ${item.quantity}${item.unit}\n`;
+            report += `  Bei: ${formatCurrency(item.price)}/${item.unit}\n`;
+            report += `  Gharama: ${formatCurrency(item.cost)}/${item.unit}\n`;
+            report += `  Thamani ya hisa: ${formatCurrency(stockValue)}\n`;
+            report += `  Faida ya hisa: ${formatCurrency(profitIfSold)}\n`;
+            
+            if (item.quantity <= item.minStock) {
+                report += `  ⚠️  Inahitaji kununua: ${item.orderQuantity || (item.minStock * 3 - item.quantity)}${item.unit}\n`;
+            }
+            
+            report += `\n`;
+        });
+        
+        // Summary
+        const totalStockValue = stock.reduce((sum, item) => sum + (item.quantity * item.price), 0);
+        const totalStockCost = stock.reduce((sum, item) => sum + (item.quantity * item.cost), 0);
+        const totalPotentialProfit = totalStockValue - totalStockCost;
+        
+        report += `JUMLA YA HISABATI:\n`;
+        report += `══════════════════════\n`;
+        report += `Thamani ya bidhaa zote: ${formatCurrency(totalStockValue)}\n`;
+        report += `Gharama ya bidhaa zote: ${formatCurrency(totalStockCost)}\n`;
+        report += `Faida inayoweza kupatikana: ${formatCurrency(totalPotentialProfit)}\n`;
+    }
+    
+    report += `\n────────────────────\n`;
+    report += `Imetolewa na: BizBook\n`;
+    report += `${new Date().toLocaleString('sw-TZ')}\n`;
+    
+    // Create downloadable file
+    const blob = new Blob([report], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `hisabati-${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    alert("✅ Ripoti ya bidhaa imepakuliwa!");
+}
+
+function exportMenu() {
+    const choice = prompt(
+        `📤 CHAGUA AINA YA RIPOTI:\n\n1. Ripoti ya Leo (mauzo, matumizi, faida)\n2. Ripoti ya Mteja (historia ya manunuzi)\n3. Ripoti ya Bidhaa (hisabati zote)\n4. Data yote (JSON - kwa kompyuta)\n\nIngiza namba (1-4):`,
+        "1"
+    );
+    
+    switch(choice) {
+        case "1": generateDailyReceipt(); break;
+        case "2": 
+            const customerName = prompt("Jina la mteja:", "");
+            if (customerName) generateCustomerReceipt(customerName);
+            break;
+        case "3": generateStockReport(); break;
+        case "4": exportData(); break;
+        default: break;
+    }
+    }
+
 // =========== INITIAL LOAD ===========
 refreshStock();
 refreshSales();
