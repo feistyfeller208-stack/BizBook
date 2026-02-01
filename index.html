@@ -737,17 +737,29 @@ function exportData() {
 
 // =========== PRODUCT FORM FUNCTIONS ===========
 function showAddProductForm() {
+    // Hide all tab contents
     document.querySelectorAll('.tab-content').forEach(content => {
-        content.classList.remove('active');
+        content.style.display = 'none';
     });
-    document.getElementById('add-product-form').classList.add('active');
+    
+    // Show the product form
+    const form = document.getElementById('add-product-form');
+    form.style.display = 'block';
+    form.classList.add('active');
 }
 
 function hideAddProductForm() {
-    document.getElementById('add-product-form').classList.remove('active');
-    document.getElementById('bidhaa').classList.add('active');
+    // Hide the product form
+    const form = document.getElementById('add-product-form');
+    form.style.display = 'none';
+    form.classList.remove('active');
     
-    // Reset active tab button
+    // Show the bidhaa tab
+    const bidhaaTab = document.getElementById('bidhaa');
+    bidhaaTab.style.display = 'block';
+    bidhaaTab.classList.add('active');
+    
+    // Update tab buttons
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.classList.remove('active');
         if (btn.getAttribute('data-tab') === 'bidhaa') {
@@ -756,94 +768,38 @@ function hideAddProductForm() {
     });
 }
 
-function addProduct() {
-    const name = document.getElementById('product-name').value;
-    const quantity = parseInt(document.getElementById('product-quantity').value) || 0;
-    const price = parseInt(document.getElementById('product-price').value) || 0;
-    const cost = parseInt(document.getElementById('product-cost').value) || 0;
-    
-    if (!name) {
-        alert('Tafadhali ingiza jina la bidhaa');
-        return;
-    }
-    
-    const newProduct = {
-        id: Date.now(),
-        name: name,
-        quantity: quantity,
-        price: price,
-        cost: cost,
-        minStock: 10
-    };
-    
-    stock.push(newProduct);
-    saveData('biashara_stock', stock);
-    
-    // Clear form
-    document.getElementById('product-name').value = '';
-    document.getElementById('product-quantity').value = '';
-    document.getElementById('product-price').value = '';
-    document.getElementById('product-cost').value = '';
-    
-    hideAddProductForm();
-    refreshStock();
-    refreshBuyList();
-    
-    alert(`✅ ${name} imeongezwa kwenye bidhaa zako`);
-}
-
 // =========== DEBT FORM FUNCTIONS ===========
 function showAddDebtForm() {
+    // Hide all tab contents
     document.querySelectorAll('.tab-content').forEach(content => {
-        content.classList.remove('active');
+        content.style.display = 'none';
     });
-    document.getElementById('add-debt-form').classList.add('active');
+    
+    // Show the debt form
+    const form = document.getElementById('add-debt-form');
+    form.style.display = 'block';
+    form.classList.add('active');
 }
 
 function hideAddDebtForm() {
-    document.getElementById('add-debt-form').classList.remove('active');
-    document.getElementById('deni').classList.add('active');
+    // Hide the debt form
+    const form = document.getElementById('add-debt-form');
+    form.style.display = 'none';
+    form.classList.remove('active');
     
-    // Reset active tab button
+    // Show the deni tab
+    const deniTab = document.getElementById('deni');
+    deniTab.style.display = 'block';
+    deniTab.classList.add('active');
+    
+    // Update tab buttons
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.classList.remove('active');
         if (btn.getAttribute('data-tab') === 'deni') {
             btn.classList.add('active');
         }
     });
-}
-
-function addDebt() {
-    const customer = document.getElementById('debt-customer').value;
-    const amount = parseInt(document.getElementById('debt-amount').value) || 0;
-    const phone = document.getElementById('debt-phone').value;
-    
-    if (!customer || amount <= 0) {
-        alert('Tafadhali ingiza jina la mteja na kiasi cha deni');
-        return;
     }
-    
-    const newDebt = {
-        id: Date.now(),
-        customer: customer,
-        amount: amount,
-        phone: phone,
-        date: new Date().toLocaleDateString('sw-TZ')
-    };
-    
-    debts.push(newDebt);
-    saveData('biashara_debts', debts);
-    
-    // Clear form
-    document.getElementById('debt-customer').value = '';
-    document.getElementById('debt-amount').value = '';
-    document.getElementById('debt-phone').value = '';
-    
-    hideAddDebtForm();
-    refreshDebts();
-    
-    alert(`✅ Deni la ${formatCurrency(amount)} limeongezwa kwa ${customer}`);
-}
 
 // =========== UTILITY FUNCTIONS ===========
 function formatCurrency(amount) {
