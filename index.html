@@ -361,63 +361,153 @@ function refreshSales() {
         return;
     }
     
-    salesList.innerHTML = todaySales.map(sale => `
-        <div class="item">
-            <div class="item-info">
-                <div class="item-name">${sale.customer}</div>
-                <div class="item-detail">${sale.product} × ${sale.quantity} | ${sale.time}</div>
-            </div>
-            <div class="item-amount">${formatCurrency(sale.total)}</div>
+salesList.innerHTML = todaySales.map(sale => `
+    <div class="item" onclick="showSaleDetails(${sale.id})" 
+         oncontextmenu="showSaleMenu(event, ${sale.id})">
+        <div class="item-info">
+            <div class="item-name">${sale.customer}</div>
+            <div class="item-detail">${sale.product} × ${sale.quantity} | ${sale.time}</div>
         </div>
-    `).join('');
-    
-    updateCashCalculation();
-      }
+        <div class="item-amount">${formatCurrency(sale.total)}</div>
+    </div>
+`).join('');
 
-      function quickSale() {
-    if (stock.length === 0) {
-        alert('Kwanza ongeza bidhaa kwenye "Bidhaa"');
-        return;
+// Add these functions:
+function showSaleDetails(saleId) {
+    const sale = sales.find(s => s.id === saleId);
+    if (!sale) return;
+    
+    const details = `
+💰 <strong>Muuzo</strong>
+
+Mteja: ${sale.customer}
+Bidhaa: ${sale.product}
+Idadi: ${sale.quantity}
+Jumla: ${formatCurrency(sale.total)}
+Tarehe: ${new Date(sale.date).toLocaleDateString('sw-TZ')}
+Muda: ${sale.time}
+    `;
+    
+    const action = prompt(details + "\n\nKitendo:\n1. Badilisha\n2. Ondoa\n3. Rudisha bidhaa", "2");
+    
+    switch(action) {
+        case "1": editSale(saleId); break;
+        case "2": deleteSale(saleId); break;
+        case "3": returnProduct(saleId); break;
+    }
+}
+
+function editSale(saleId) {
+    const sale = sales.find(s => s.id === saleId);
+    if (!sale) return;
+    
+    const newCustomer = prompt("Jina jipya la mteja:", sale.customer);
+    if (newCustomer) sale.customer = newCustomer;
+    
+    const newQuantity = parseInt(prompt(`Idadi jipya ya ${sale.product}:`, sale.quantity));
+    if (!isNaN(newQuantity) && newQuantity > 0) {
+        // Find the product to check stock
+        const product = stock.find(p => p.name === sale.product);
+        if (product) {
+            const quantityDiff = newQuantity - sale.quantity;
+            if (quantityDiff > product.quantity) {
+                alert(`Una ${product.quantity} tu ya ${sale.product}`);
+                return;
+            }
+            
+            // Update stock
+            product.quantity -= quantityDiff;
+            sale.quantity = newQuantity;
+            sale.total = newQuantity * sale.total / sale.quantity; // Adjust total
+        }
     }
     
-    const customer = prompt('Jina la mteja:') || 'Mteja';
-    const productNames = stock.map(item => item.name).join(', ');
-    const productName = prompt(`Bidhaa gani? (${productNames}):`);
-    
-    const product = stock.find(item => item.name.toLowerCase() === productName?.toLowerCase());
-    if (!product) {
-        alert('Bidhaa hiyo haipo');
-        return;
-    }
-    
-    const quantity = parseInt(prompt(`Idadi ya ${product.name}:`, '1')) || 1;
-    if (quantity > product.quantity) {
-        alert(`Una ${product.quantity} tu ya ${product.name}`);
-        return;
-    }
-    
-    const total = quantity * product.price;
-    const newSale = {
-        id: Date.now(),
-        customer: customer,
-        product: product.name,
-        quantity: quantity,
-        total: total,
-        date: new Date().toISOString(),
-        time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
-    };
-    
-    sales.push(newSale);
     saveData('biashara_sales', sales);
-    
-    product.quantity -= quantity;
     saveData('biashara_stock', stock);
-    
     refreshSales();
     refreshStock();
-    refreshBuyList();
-    alert(`✅ ${customer}: ${product.name} × ${quantity} = ${formatCurrency(total)}`);
+    updateCashCalculation();
+    alert("✅ Muuzo umebadilishwa");
 }
+
+function deleteSale(saleId) {
+    if (!confirm("Unahakika unataka kufuta muuzo huu?")) return;
+    
+    const saleIndex = sales.findIndex(s => s.id === saleId);
+    if (saleIndex !== -1) {
+        const sale = sales[saleIndex];
+        
+        // Return product to stock
+        const product = stock.find(p => p.name === sale.product);
+        if (product) {
+            product.quantity += sale.quantity;
+            saveData('biashara_stock', stock);
+        }
+        
+        // Remove sale
+        sales.splice(saleIndex, 1);
+        saveData('biashara_sales', sales);
+        
+        refreshSales();
+        refreshStock();
+        updateCashCalculation();
+        alert("✅ Muuzo umefutwa");
+    }
+}
+
+function returnProduct(saleId) {
+    const sale = sales.find(s => s.id === saleId);
+    if (!sale) return;
+    
+    const returnQty = parseInt(prompt(`Idadi ya ${sale.product} kurudisha (iliyonunuliwa: ${sale.quantity}):`, sale.quantity));
+    if (!isNaN(returnQty) && returnQty > 0 && returnQty <= sale.quantity) {
+        const product = stock.find(p => p.name === sale.product);
+        if (product) {
+            // Return to stock
+            product.quantity += returnQty;
+            
+            // Reduce sale quantity or remove if all returned
+            if (returnQty === sale.quantity) {
+                // Delete the sale
+                const saleIndex = sales.findIndex(s => s.id === saleId);
+                sales.splice(saleIndex, 1);
+            } else {
+                // Reduce sale quantity
+                sale.quantity -= returnQty;
+                sale.total = sale.quantity * (sale.total / (sale.quantity + returnQty));
+            }
+            
+            saveData('biashara_stock', stock);
+            saveData('biashara_sales', sales);
+            
+            refreshSales();
+            refreshStock();
+            updateCashCalculation();
+            alert(`✅ ${returnQty} ${sale.product} zimerudishwa kwenye hisa`);
+        }
+    }
+}
+
+function showSaleMenu(event, saleId) {
+    event.preventDefault();
+    const sale = sales.find(s => s.id === saleId);
+    if (!sale) return;
+    
+    const choice = prompt(`Muuzo: ${sale.customer} - ${sale.product}\n1. Tumia ujumbe\n2. Tuma risiti\n3. Ondoa`, "1");
+    
+    switch(choice) {
+        case "1":
+            const message = `Habari ${sale.customer}, asante kwa kununua ${sale.product} leo.`;
+            window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
+            break;
+        case "2":
+            // Generate receipt
+            const receipt = `RISITI\nMteja: ${sale.customer}\nBidhaa: ${sale.product}\nIdadi: ${sale.quantity}\nJumla: ${formatCurrency(sale.total)}\nAsante!`;
+            window.open(`https://wa.me/?text=${encodeURIComponent(receipt)}`, '_blank');
+            break;
+        case "3": deleteSale(saleId); break;
+    }
+    }
 
 // =========== CASH MANAGEMENT ===========
 function refreshCash() {
