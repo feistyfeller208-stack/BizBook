@@ -39,7 +39,7 @@
 <body>
     <header>
         <h1>📓 BizBook</h1>
-        </header>
+    </header>
     
     <div class="tabs">
         <button class="tab-btn active" data-tab="bidhaa"><span>📦</span><span>Products</span></button>
@@ -54,6 +54,7 @@
             <h3>📦 Your Products</h3>
             <div class="item-list" id="stock-list"></div>
             <button class="btn" onclick="addProductWithUnits()">+ Add Product</button>
+            <button class="btn" onclick="addCartonProduct()" style="margin-top: 5px; background: #3498db;">+ Add Carton Product</button>
         </div>
     </div>
     
@@ -99,11 +100,10 @@
     <div class="action-bar">
         <button class="action-btn" onclick="quickSale()">💰 Quick Sale</button>
         <button class="action-btn" onclick="quickExpense()">📝 Expense</button>
-        <button class="action-btn" onclick="exportData()">📤 Export</button>
+        <button class="action-btn" onclick="exportMenu()">📤 Export</button>
     </div>
-    
-    <script>
 
+        <script>
 // =========== DATA STORAGE ===========
 function saveData(key, data) { 
     localStorage.setItem(key, JSON.stringify(data)); 
@@ -151,7 +151,7 @@ document.querySelectorAll('.tab-btn').forEach(button => {
     });
 });
 
-// =========== PRODUCT MANAGEMENT WITH UNITS ===========
+// =========== PRODUCT MANAGEMENT WITH UNITS & CARTONS ===========
 function refreshStock() {
     const stockList = document.getElementById('stock-list');
     
@@ -161,6 +161,37 @@ function refreshStock() {
     }
     
     stockList.innerHTML = stock.map(item => {
+        // CARTON PRODUCT DISPLAY
+        if (item.cartonSize) {
+            const fullCartons = Math.floor((item.quantity - (item.openItems || 0)) / item.cartonSize);
+            const itemType = item.itemType || "item";
+            
+            let badge = '';
+            if (item.quantity === 0) {
+                badge = '<span class="badge badge-danger">Empty!</span>';
+            } else if (item.quantity <= item.minStock) {
+                badge = '<span class="badge badge-warning">Reorder</span>';
+            }
+            
+            return `
+                <div class="item" onclick="sellCartonProduct(${item.id})">
+                    <div class="item-info">
+                        <div class="item-name">${item.name} 📦 ${badge}</div>
+                        <div class="item-detail">
+                            ${item.quantity} ${itemType}s total<br>
+                            ${fullCartons} full cartons + ${item.openItems || 0} open ${itemType}s<br>
+                            Sell: ${formatCurrency(item.price)}/${itemType} | ${formatCurrency(item.price * item.cartonSize)}/carton
+                        </div>
+                    </div>
+                    <div class="item-amount">
+                        ${fullCartons}📦<br>
+                        ${item.openItems || 0}🟢
+                    </div>
+                </div>
+            `;
+        }
+        
+        // REGULAR PRODUCT DISPLAY
         let badge = '';
         const stockPercent = (item.quantity / item.minStock) * 100;
         
@@ -236,9 +267,148 @@ function addProductWithUnits() {
     refreshBuyList();
     
     alert(`✅ ${name} added!\n${quantity}${unit}\nCost: ${formatCurrency(cost)}/${unit}\nSell: ${formatCurrency(price)}/${unit}`);
+    }
+            
+    // =========== CARTON PRODUCT MANAGEMENT ===========
+function addCartonProduct() {
+    const name = prompt("Product name:", "Porcelain Cups");
+    
+    const itemsPerCarton = parseInt(prompt("Items in one carton:", "24")) || 24;
+    const cartonCost = parseInt(prompt("Cost per CARTON (TZS):", "24000")) || 0;
+    const itemPrice = parseInt(prompt("Selling price per ITEM (TZS):", "1500")) || 0;
+    
+    // Calculate cost per item
+    const costPerItem = cartonCost / itemsPerCarton;
+    
+    // Ask initial stock
+    const cartonsInStock = parseInt(prompt("How many cartons do you have?", "10")) || 0;
+    const totalItems = cartonsInStock * itemsPerCarton;
+    
+    // Ask open items (items sold individually from opened cartons)
+    const openItems = parseInt(prompt("How many items are already opened/sold individually?", "0")) || 0;
+    
+    stock.push({
+        id: Date.now(),
+        name: name,
+        quantity: totalItems, // Total items in stock
+        price: itemPrice,     // Sell per item
+        cost: costPerItem,    // Cost per item
+        minStock: itemsPerCarton * 2, // Reorder when 2 cartons worth left
+        
+        // Carton tracking
+        unit: "vipande",      // Sell as individual items
+        cartonSize: itemsPerCarton,
+        cartonCost: cartonCost,
+        wholeCartons: cartonsInStock - Math.ceil(openItems / itemsPerCarton),
+        openItems: openItems % itemsPerCarton,
+        itemType: prompt("What type of item? (cup, bowl, pen, etc.):", "cup"),
+        
+        // Smart info
+        profitPerItem: itemPrice - costPerItem,
+        profitPerCarton: (itemPrice - costPerItem) * itemsPerCarton
+    });
+    
+    saveData('bizbook_stock', stock);
+    refreshStock();
+    
+    alert(`✅ ${name} added!\n${cartonsInStock} cartons (${totalItems} items)\nBuy carton: ${formatCurrency(cartonCost)}\nSell per item: ${formatCurrency(itemPrice)}\nProfit/carton: ${formatCurrency((itemPrice - costPerItem) * itemsPerCarton)}`);
 }
 
-function showProductMenu(productId) {
+function sellCartonProduct(productId) {
+    const product = stock.find(p => p.id === productId);
+    if (!product || !product.cartonSize) return makeSaleWithUnits(productId);
+    
+    const customer = prompt("Customer name:", "Customer");
+    const itemName = product.itemType || "item"; // "cup", "bowl", "pen", etc.
+    
+    const saleType = prompt(
+        `Sell ${product.name} as:\n1. Single ${itemName}\n2. Whole carton (${product.cartonSize} ${itemName}s)\n3. Multiple ${itemName}s\n\nEnter choice:`,
+        "1"
+    );
+    
+    let quantity;
+    let unit;
+    
+    switch(saleType) {
+        case "1": // Single item
+            quantity = 1;
+            unit = itemName;
+            break;
+            
+        case "2": // Whole carton
+            quantity = product.cartonSize;
+            unit = "carton";
+            // Update carton count
+            if (product.wholeCartons > 0) {
+                product.wholeCartons -= 1;
+            } else {
+                // Convert open items to carton sale
+                product.openItems = product.cartonSize - quantity;
+            }
+            break;
+            
+        case "3": // Multiple items
+            quantity = parseInt(prompt(`How many ${itemName}s? (Available: ${product.quantity}):`, "2")) || 0;
+            unit = itemName + "s";
+            break;
+            
+        default:
+            return;
+    }
+    
+    if (quantity > product.quantity) {
+        alert(`Only ${product.quantity} ${itemName}s available!`);
+        return;
+    }
+    
+    const total = quantity * product.price;
+    
+    // Update stock
+    product.quantity -= quantity;
+    
+    // Update open items logic
+    if (product.openItems >= quantity) {
+        product.openItems -= quantity;
+    } else {
+        const remaining = quantity - product.openItems;
+        product.openItems = product.cartonSize - (remaining % product.cartonSize);
+        if (product.openItems === product.cartonSize) product.openItems = 0;
+    }
+    
+    // Auto-open new carton if needed
+    if (product.openItems > 0 && product.wholeCartons > 0 && product.openItems === product.cartonSize) {
+        product.wholeCartons -= 1;
+        product.openItems = 0;
+    }
+    
+    const sale = {
+        id: Date.now(),
+        customer: customer,
+        product: product.name,
+        quantity: quantity,
+        unit: unit,
+        total: total,
+        cartonSale: saleType === "2",
+        date: new Date().toISOString(),
+        time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+    };
+    
+    sales.push(sale);
+    saveData('bizbook_sales', sales);
+    saveData('bizbook_stock', stock);
+    
+    refreshSales();
+    refreshStock();
+    updateCashCalculation();
+    
+    const message = saleType === "2" 
+        ? `✅ ${customer} bought 1 carton of ${product.name} (${quantity} ${itemName}s) = ${formatCurrency(total)}`
+        : `✅ ${customer} bought ${quantity} ${unit} of ${product.name} = ${formatCurrency(total)}`;
+    
+    alert(message);
+            }
+
+            function showProductMenu(productId) {
     const product = stock.find(p => p.id === productId);
     if (!product) return;
     
@@ -248,7 +418,13 @@ function showProductMenu(productId) {
     );
     
     switch(action) {
-        case "1": makeSaleWithUnits(productId); break;
+        case "1": 
+            if (product.cartonSize) {
+                sellCartonProduct(productId);
+            } else {
+                makeSaleWithUnits(productId);
+            }
+            break;
         case "2": changeProductPrice(productId); break;
         case "3": changeProductQuantity(productId); break;
         case "4": setupSmartStock(productId); break;
@@ -340,9 +516,8 @@ function deleteProduct(productId) {
         refreshBuyList();
         alert(`✅ ${productName} deleted`);
     }
-        }
-
-        // =========== SMART STOCK SYSTEM ===========
+}
+    // =========== SMART STOCK SYSTEM ===========
 function setupSmartStock(productId) {
     const product = stock.find(p => p.id === productId);
     if (!product) return;
@@ -511,9 +686,9 @@ function createSmartOrder() {
         navigator.clipboard.writeText(message);
         alert(`✅ Order copied to clipboard!\n\nPaste in WhatsApp to ${supplierName}`);
     }
-}
+            }
 
-// =========== SALES MANAGEMENT ===========
+            // =========== SALES MANAGEMENT ===========
 function refreshSales() {
     const today = new Date().toDateString();
     const todaySales = sales.filter(sale => new Date(sale.date).toDateString() === today);
@@ -640,9 +815,9 @@ function returnProduct(saleId) {
             alert(`✅ ${returnQty} ${sale.product} returned to stock`);
         }
     }
-}
+            }
 
-// =========== CASH MANAGEMENT ===========
+            // =========== CASH MANAGEMENT ===========
 function refreshCash() {
     const todaySales = sales.filter(sale => 
         new Date(sale.date).toDateString() === new Date().toDateString()
@@ -796,9 +971,9 @@ function addDebtUSSD() {
     }
     
     alert(`✅ ${formatCurrency(amount)} debt added for ${customer}`);
-}
+    }
 
-// =========== QUICK FUNCTIONS ===========
+            // =========== QUICK FUNCTIONS ===========
 function quickSale() {
     if (stock.length === 0) {
         alert('First add products in "Products" tab');
@@ -868,28 +1043,6 @@ function quickExpense() {
     alert(`✅ ${reason}: ${formatCurrency(amount)} added`);
 }
 
-function exportData() {
-    const allData = {
-        stock: stock,
-        sales: sales,
-        debts: debts,
-        cash: cash,
-        exported: new Date().toISOString()
-    };
-    
-    const dataStr = JSON.stringify(allData, null, 2);
-    const dataBlob = new Blob([dataStr], {type: 'application/json'});
-    const url = URL.createObjectURL(dataBlob);
-    
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `bizbook-data-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-}
-
 // =========== UTILITY FUNCTIONS ===========
 function formatCurrency(amount) {
     return new Intl.NumberFormat('sw-TZ', {
@@ -897,7 +1050,7 @@ function formatCurrency(amount) {
         currency: 'TZS',
         minimumFractionDigits: 0
     }).format(amount);
-}
+            }
 
 // =========== RECEIPT & EXPORT FUNCTIONS ===========
 function generateDailyReceipt() {
@@ -1166,9 +1319,31 @@ function exportMenu() {
         case "4": exportData(); break;
         default: break;
     }
+}
+
+function exportData() {
+    const allData = {
+        stock: stock,
+        sales: sales,
+        debts: debts,
+        cash: cash,
+        exported: new Date().toISOString()
+    };
+    
+    const dataStr = JSON.stringify(allData, null, 2);
+    const dataBlob = new Blob([dataStr], {type: 'application/json'});
+    const url = URL.createObjectURL(dataBlob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `bizbook-data-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
     }
 
-// =========== INITIAL LOAD ===========
+    // =========== INITIAL LOAD ===========
 refreshStock();
 refreshSales();
 refreshCash();
@@ -1178,7 +1353,8 @@ refreshBuyList();
 document.getElementById('morning-cash').addEventListener('input', updateCashCalculation);
 document.getElementById('expenses').addEventListener('input', updateCashCalculation);
 
-console.log('📱 BizBook loaded with smart stock system!');
+console.log('📱 BizBook loaded with smart stock system and carton management!');
 </script>
 </body>
 </html>
+    
