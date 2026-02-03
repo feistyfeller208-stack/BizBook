@@ -3,7 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BizBook</title>
+    <title>BizBook - Business Ledger</title>
+    
+    <!-- PWA Meta Tags -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2E8B57">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="icon" type="image/png" href="icons/icon-192x192.png">
+    <link rel="apple-touch-icon" href="icons/icon-192x192.png">
+    
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
         body { background: #f5f5f5; color: #333; padding-bottom: 80px; }
@@ -34,11 +44,44 @@
         .badge-danger { background: #e74c3c; color: white; }
         .badge-warning { background: #f39c12; color: white; }
         .badge-success { background: #2ecc71; color: white; }
+        
+        /* Install Prompt */
+        #installPrompt { 
+            position: fixed; 
+            bottom: 80px; 
+            left: 10px; 
+            right: 10px; 
+            background: white; 
+            padding: 15px; 
+            border-radius: 10px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2); 
+            z-index: 1000; 
+            display: none;
+            border: 2px solid #2E8B57;
+        }
+        #installPrompt button { 
+            background: #2E8B57; 
+            color: white; 
+            border: none; 
+            padding: 10px; 
+            border-radius: 5px; 
+            margin-top: 10px; 
+            width: 100%; 
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
+    <div id="installPrompt">
+        <strong>📱 Install BizBook App</strong>
+        <p>Install for faster access and offline use!</p>
+        <button id="installBtn">Install Now</button>
+        <button id="cancelInstall" style="background: #666; margin-top: 5px;">Later</button>
+    </div>
+    
     <header>
         <h1>📓 BizBook</h1>
+        <div style="font-size: 0.8rem; opacity: 0.9;">Business Ledger for Shops</div>
     </header>
     
     <div class="tabs">
@@ -104,6 +147,72 @@
     </div>
 
         <script>
+// =========== PWA INSTALL PROMPT ===========
+let deferredPrompt;
+const installPrompt = document.getElementById('installPrompt');
+const installBtn = document.getElementById('installBtn');
+const cancelInstall = document.getElementById('cancelInstall');
+
+// Show install prompt when available
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    
+    // Show prompt after 3 seconds
+    setTimeout(() => {
+        if (localStorage.getItem('bizbook_install_dismissed') !== 'true') {
+            installPrompt.style.display = 'block';
+        }
+    }, 3000);
+});
+
+installBtn.addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    
+    if (outcome === 'accepted') {
+        console.log('User installed BizBook');
+        installPrompt.style.display = 'none';
+    }
+    
+    deferredPrompt = null;
+});
+
+cancelInstall.addEventListener('click', () => {
+    installPrompt.style.display = 'none';
+    localStorage.setItem('bizbook_install_dismissed', 'true');
+});
+
+// Register Service Worker
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+            .then(registration => {
+                console.log('✅ Service Worker registered:', registration.scope);
+                
+                // Check for updates
+                registration.addEventListener('updatefound', () => {
+                    const newWorker = registration.installing;
+                    console.log('🔄 New service worker found:', newWorker);
+                    
+                    newWorker.addEventListener('statechange', () => {
+                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            console.log('🔄 New version available! Refresh to update.');
+                            if (confirm('New version available! Refresh now?')) {
+                                window.location.reload();
+                            }
+                        }
+                    });
+                });
+            })
+            .catch(error => {
+                console.log('❌ Service Worker registration failed:', error);
+            });
+    });
+}
+
 // =========== DATA STORAGE ===========
 function saveData(key, data) { 
     localStorage.setItem(key, JSON.stringify(data)); 
@@ -267,8 +376,8 @@ function addProductWithUnits() {
     refreshBuyList();
     
     alert(`✅ ${name} added!\n${quantity}${unit}\nCost: ${formatCurrency(cost)}/${unit}\nSell: ${formatCurrency(price)}/${unit}`);
-    }
-            
+}
+
     // =========== CARTON PRODUCT MANAGEMENT ===========
 function addCartonProduct() {
     const name = prompt("Product name:", "Porcelain Cups");
@@ -319,7 +428,7 @@ function sellCartonProduct(productId) {
     if (!product || !product.cartonSize) return makeSaleWithUnits(productId);
     
     const customer = prompt("Customer name:", "Customer");
-    const itemName = product.itemType || "item"; // "cup", "bowl", "pen", etc.
+    const itemName = product.itemType || "item";
     
     const saleType = prompt(
         `Sell ${product.name} as:\n1. Single ${itemName}\n2. Whole carton (${product.cartonSize} ${itemName}s)\n3. Multiple ${itemName}s\n\nEnter choice:`,
@@ -406,9 +515,9 @@ function sellCartonProduct(productId) {
         : `✅ ${customer} bought ${quantity} ${unit} of ${product.name} = ${formatCurrency(total)}`;
     
     alert(message);
-            }
+}
 
-            function showProductMenu(productId) {
+function showProductMenu(productId) {
     const product = stock.find(p => p.id === productId);
     if (!product) return;
     
@@ -516,8 +625,9 @@ function deleteProduct(productId) {
         refreshBuyList();
         alert(`✅ ${productName} deleted`);
     }
-}
-    // =========== SMART STOCK SYSTEM ===========
+            }
+
+        // =========== SMART STOCK SYSTEM ===========
 function setupSmartStock(productId) {
     const product = stock.find(p => p.id === productId);
     if (!product) return;
@@ -595,36 +705,6 @@ function refreshBuyList() {
     `).join('');
 }
 
-function showBuyOptions(productName) {
-    const product = stock.find(p => p.name === productName);
-    if (!product) return;
-    
-    const action = prompt(
-        `${product.name}\nNeed to buy: ${product.orderQuantity}${product.unit}\nCost: ${formatCurrency(product.orderQuantity * product.cost)}\n\nChoose:\n1. Create WhatsApp order\n2. Change order amount\n3. Mark as bought\n\nEnter number (1-3):`,
-        "1"
-    );
-    
-    switch(action) {
-        case "1": createSmartOrder(); break;
-        case "2": 
-            const newAmount = parseInt(prompt(`New order amount for ${product.name} (current: ${product.orderQuantity}${product.unit}):`, product.orderQuantity));
-            if (newAmount && newAmount > 0) {
-                product.orderQuantity = newAmount;
-                saveData('bizbook_stock', stock);
-                refreshBuyList();
-                alert(`✅ Order amount updated: ${newAmount}${product.unit}`);
-            }
-            break;
-        case "3":
-            product.quantity += product.orderQuantity;
-            saveData('bizbook_stock', stock);
-            refreshStock();
-            refreshBuyList();
-            alert(`✅ ${product.orderQuantity}${product.unit} of ${product.name} added to stock`);
-            break;
-    }
-}
-
 function createSmartOrder() {
     let itemsToBuy = [];
     let totalCost = 0;
@@ -686,9 +766,9 @@ function createSmartOrder() {
         navigator.clipboard.writeText(message);
         alert(`✅ Order copied to clipboard!\n\nPaste in WhatsApp to ${supplierName}`);
     }
-            }
+}
 
-            // =========== SALES MANAGEMENT ===========
+// =========== SALES, CASH, DEBT FUNCTIONS ===========
 function refreshSales() {
     const today = new Date().toDateString();
     const todaySales = sales.filter(sale => new Date(sale.date).toDateString() === today);
@@ -717,107 +797,6 @@ function refreshSales() {
     updateCashCalculation();
 }
 
-function showSaleMenu(saleId) {
-    const sale = sales.find(s => s.id === saleId);
-    if (!sale) return;
-    
-    const action = prompt(
-        `${sale.customer} - ${sale.product} × ${sale.quantity}${sale.unit || ''}\nTotal: ${formatCurrency(sale.total)}\nTime: ${sale.time}\n\nChoose:\n1. Edit\n2. Delete\n3. Return product\n\nEnter number (1-3):`,
-        "1"
-    );
-    
-    switch(action) {
-        case "1": editSale(saleId); break;
-        case "2": deleteSale(saleId); break;
-        case "3": returnProduct(saleId); break;
-        default: break;
-    }
-}
-
-function editSale(saleId) {
-    const sale = sales.find(s => s.id === saleId);
-    if (!sale) return;
-    
-    const newCustomer = prompt("New customer name:", sale.customer);
-    if (newCustomer) sale.customer = newCustomer;
-    
-    const newQuantity = parseFloat(prompt(`New quantity of ${sale.product}:`, sale.quantity));
-    if (!isNaN(newQuantity) && newQuantity > 0) {
-        const product = stock.find(p => p.name === sale.product);
-        if (product) {
-            const quantityDiff = newQuantity - sale.quantity;
-            if (quantityDiff > product.quantity) {
-                alert(`Only ${product.quantity}${product.unit} of ${sale.product} available`);
-                return;
-            }
-            
-            product.quantity -= quantityDiff;
-            sale.quantity = newQuantity;
-            sale.total = newQuantity * (sale.total / sale.quantity);
-        }
-    }
-    
-    saveData('bizbook_sales', sales);
-    saveData('bizbook_stock', stock);
-    refreshSales();
-    refreshStock();
-    updateCashCalculation();
-    alert("✅ Sale updated");
-}
-
-function deleteSale(saleId) {
-    if (!confirm("Delete this sale?")) return;
-    
-    const saleIndex = sales.findIndex(s => s.id === saleId);
-    if (saleIndex !== -1) {
-        const sale = sales[saleIndex];
-        
-        const product = stock.find(p => p.name === sale.product);
-        if (product) {
-            product.quantity += sale.quantity;
-            saveData('bizbook_stock', stock);
-        }
-        
-        sales.splice(saleIndex, 1);
-        saveData('bizbook_sales', sales);
-        
-        refreshSales();
-        refreshStock();
-        updateCashCalculation();
-        alert("✅ Sale deleted");
-    }
-}
-
-function returnProduct(saleId) {
-    const sale = sales.find(s => s.id === saleId);
-    if (!sale) return;
-    
-    const returnQty = parseFloat(prompt(`Quantity of ${sale.product} to return (bought: ${sale.quantity}):`, sale.quantity));
-    if (!isNaN(returnQty) && returnQty > 0 && returnQty <= sale.quantity) {
-        const product = stock.find(p => p.name === sale.product);
-        if (product) {
-            product.quantity += returnQty;
-            
-            if (returnQty === sale.quantity) {
-                const saleIndex = sales.findIndex(s => s.id === saleId);
-                sales.splice(saleIndex, 1);
-            } else {
-                sale.quantity -= returnQty;
-                sale.total = sale.quantity * (sale.total / (sale.quantity + returnQty));
-            }
-            
-            saveData('bizbook_stock', stock);
-            saveData('bizbook_sales', sales);
-            
-            refreshSales();
-            refreshStock();
-            updateCashCalculation();
-            alert(`✅ ${returnQty} ${sale.product} returned to stock`);
-        }
-    }
-            }
-
-            // =========== CASH MANAGEMENT ===========
 function refreshCash() {
     const todaySales = sales.filter(sale => 
         new Date(sale.date).toDateString() === new Date().toDateString()
@@ -857,7 +836,6 @@ function saveCash() {
     alert('✅ Cash saved!');
 }
 
-// =========== DEBT MANAGEMENT ===========
 function refreshDebts() {
     const debtList = document.getElementById('debt-list');
     
@@ -875,71 +853,6 @@ function refreshDebts() {
             <div class="item-amount">${formatCurrency(debt.amount)}</div>
         </div>
     `).join('');
-}
-
-function showDebtMenu(debtId) {
-    const debt = debts.find(d => d.id === debtId);
-    if (!debt) return;
-    
-    const action = prompt(
-        `${debt.customer}\nDebt: ${formatCurrency(debt.amount)}\nDate: ${debt.date}\n\nChoose:\n1. Pay debt\n2. Edit\n3. Delete\n\nEnter number (1-3):`,
-        "1"
-    );
-    
-    switch(action) {
-        case "1": payDebt(debtId); break;
-        case "2": editDebt(debtId); break;
-        case "3": deleteDebt(debtId); break;
-        default: break;
-    }
-}
-
-function payDebt(debtId) {
-    const debt = debts.find(d => d.id === debtId);
-    if (!debt) return;
-    
-    const amountPaid = parseFloat(prompt(`Amount paid (debt: ${formatCurrency(debt.amount)}):`, debt.amount));
-    if (amountPaid && amountPaid > 0) {
-        if (amountPaid >= debt.amount) {
-            alert(`✅ ${debt.customer} paid all debt of ${formatCurrency(debt.amount)}`);
-            const debtIndex = debts.findIndex(d => d.id === debtId);
-            debts.splice(debtIndex, 1);
-        } else {
-            debt.amount -= amountPaid;
-            alert(`✅ ${debt.customer} paid ${formatCurrency(amountPaid)}, still owes ${formatCurrency(debt.amount)}`);
-        }
-        
-        saveData('bizbook_debts', debts);
-        refreshDebts();
-    }
-}
-
-function editDebt(debtId) {
-    const debt = debts.find(d => d.id === debtId);
-    if (!debt) return;
-    
-    const newAmount = parseInt(prompt(`New debt amount (current: ${formatCurrency(debt.amount)}):`, debt.amount));
-    if (newAmount && newAmount > 0) debt.amount = newAmount;
-    
-    const newPhone = prompt(`New phone (current: ${debt.phone || 'None'}):`, debt.phone || '');
-    if (newPhone !== null) debt.phone = newPhone;
-    
-    saveData('bizbook_debts', debts);
-    refreshDebts();
-    alert("✅ Debt updated");
-}
-
-function deleteDebt(debtId) {
-    if (!confirm("Delete this debt?")) return;
-    
-    const debtIndex = debts.findIndex(d => d.id === debtId);
-    if (debtIndex !== -1) {
-        const debt = debts[debtIndex];
-        debts.splice(debtIndex, 1);
-        saveData('bizbook_debts', debts);
-        refreshDebts();
-        alert(`✅ ${debt.customer}'s debt deleted`);
-    }
 }
 
 function addDebtUSSD() {
@@ -971,9 +884,9 @@ function addDebtUSSD() {
     }
     
     alert(`✅ ${formatCurrency(amount)} debt added for ${customer}`);
-    }
+}
 
-            // =========== QUICK FUNCTIONS ===========
+// =========== QUICK FUNCTIONS ===========
 function quickSale() {
     if (stock.length === 0) {
         alert('First add products in "Products" tab');
@@ -1043,266 +956,6 @@ function quickExpense() {
     alert(`✅ ${reason}: ${formatCurrency(amount)} added`);
 }
 
-// =========== UTILITY FUNCTIONS ===========
-function formatCurrency(amount) {
-    return new Intl.NumberFormat('sw-TZ', {
-        style: 'currency',
-        currency: 'TZS',
-        minimumFractionDigits: 0
-    }).format(amount);
-            }
-
-// =========== RECEIPT & EXPORT FUNCTIONS ===========
-function generateDailyReceipt() {
-    const today = new Date().toLocaleDateString('sw-TZ');
-    const todaySales = sales.filter(sale => 
-        new Date(sale.date).toDateString() === new Date().toDateString()
-    );
-    
-    const totalSales = todaySales.reduce((sum, sale) => sum + sale.total, 0);
-    const expenses = cash.expenses || 0;
-    const profit = totalSales - expenses;
-    
-    // Create receipt text
-    let receipt = `📊 RIPOTI YA LEO\n`;
-    receipt += `Tarehe: ${today}\n`;
-    receipt += `══════════════════════\n\n`;
-    
-    // Add sales summary
-    receipt += `MAUZO YA LEO:\n`;
-    receipt += `══════════════════════\n`;
-    
-    if (todaySales.length === 0) {
-        receipt += `Hakuna mauzo leo\n`;
-    } else {
-        // Group sales by product
-        const productSales = {};
-        todaySales.forEach(sale => {
-            if (!productSales[sale.product]) {
-                productSales[sale.product] = { quantity: 0, total: 0 };
-            }
-            productSales[sale.product].quantity += sale.quantity;
-            productSales[sale.product].total += sale.total;
-        });
-        
-        Object.entries(productSales).forEach(([product, data]) => {
-            receipt += `${product}: ${data.quantity} × ${formatCurrency(data.total / data.quantity)} = ${formatCurrency(data.total)}\n`;
-        });
-        
-        receipt += `\nJumla Mauzo: ${formatCurrency(totalSales)}\n`;
-    }
-    
-    receipt += `\nMATUMIZI YA LEO:\n`;
-    receipt += `══════════════════════\n`;
-    receipt += `${formatCurrency(expenses)}\n`;
-    
-    receipt += `\nFEDHA:\n`;
-    receipt += `══════════════════════\n`;
-    receipt += `Asubuhi: ${formatCurrency(cash.morning || 0)}\n`;
-    receipt += `Mauzo: ${formatCurrency(totalSales)}\n`;
-    receipt += `Matumizi: ${formatCurrency(expenses)}\n`;
-    receipt += `────────────────────\n`;
-    receipt += `Jioni (inapaswa kuwa): ${formatCurrency((cash.morning || 0) + totalSales - expenses)}\n`;
-    
-    receipt += `\nFAIDA YA LEO:\n`;
-    receipt += `══════════════════════\n`;
-    receipt += `Mauzo: ${formatCurrency(totalSales)}\n`;
-    receipt += `- Matumizi: ${formatCurrency(expenses)}\n`;
-    receipt += `────────────────────\n`;
-    receipt += `FAIDA: ${formatCurrency(profit)}\n`;
-    
-    receipt += `\nMADENI:\n`;
-    receipt += `══════════════════════\n`;
-    const activeDebts = debts.filter(debt => debt.amount > 0);
-    if (activeDebts.length === 0) {
-        receipt += `Hakuna madeni\n`;
-    } else {
-        activeDebts.forEach(debt => {
-            receipt += `${debt.customer}: ${formatCurrency(debt.amount)} (tarehe: ${debt.date})\n`;
-        });
-        const totalDebt = activeDebts.reduce((sum, debt) => sum + debt.amount, 0);
-        receipt += `\nJumla Madeni: ${formatCurrency(totalDebt)}\n`;
-    }
-    
-    receipt += `\nBIDHAA ZA KUNUNUA:\n`;
-    receipt += `══════════════════════\n`;
-    let itemsToBuy = [];
-    let buyTotal = 0;
-    
-    stock.forEach(item => {
-        if (item.quantity <= item.minStock) {
-            const needed = item.orderQuantity || (item.minStock * 3 - item.quantity);
-            const cost = needed * item.cost;
-            itemsToBuy.push({ name: item.name, needed: needed, unit: item.unit, cost: cost });
-            buyTotal += cost;
-        }
-    });
-    
-    if (itemsToBuy.length === 0) {
-        receipt += `Huna hitaji la kununua\n`;
-    } else {
-        itemsToBuy.forEach(item => {
-            receipt += `${item.name}: ${item.needed}${item.unit} × ${formatCurrency(item.cost / item.needed)} = ${formatCurrency(item.cost)}\n`;
-        });
-        receipt += `\nJumla ya Kununua: ${formatCurrency(buyTotal)}\n`;
-    }
-    
-    receipt += `\n────────────────────\n`;
-    receipt += `Imetolewa na: BizBook\n`;
-    receipt += `${new Date().toLocaleString('sw-TZ')}\n`;
-    
-    // Create downloadable text file
-    const blob = new Blob([receipt], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `ripoti-${today.replace(/\//g, '-')}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    // Also show alert with option to copy
-    if (confirm("✅ Ripoti imepakuliwa!\n\nUnataka kuiona hapa?")) {
-        alert(receipt);
-    }
-}
-
-function generateCustomerReceipt(customerName) {
-    const customerSales = sales.filter(sale => 
-        sale.customer.toLowerCase().includes(customerName.toLowerCase()) ||
-        customerName.toLowerCase().includes(sale.customer.toLowerCase())
-    );
-    
-    if (customerSales.length === 0) {
-        alert(`Hakuna mauzo ya "${customerName}"`);
-        return;
-    }
-    
-    const totalSpent = customerSales.reduce((sum, sale) => sum + sale.total, 0);
-    
-    let receipt = `📄 RISITI YA MT EJA\n`;
-    receipt += `Mteja: ${customerName}\n`;
-    receipt += `Tarehe: ${new Date().toLocaleDateString('sw-TZ')}\n`;
-    receipt += `══════════════════════\n\n`;
-    
-    receipt += `HISTORIA YA MANUNUZI:\n`;
-    receipt += `══════════════════════\n`;
-    
-    customerSales.forEach(sale => {
-        const saleDate = new Date(sale.date).toLocaleDateString('sw-TZ');
-        receipt += `${saleDate}: ${sale.product} × ${sale.quantity}${sale.unit || ''} = ${formatCurrency(sale.total)}\n`;
-    });
-    
-    receipt += `\n────────────────────\n`;
-    receipt += `JUMLA YOTE: ${formatCurrency(totalSpent)}\n`;
-    
-    // Check if customer has debt
-    const customerDebt = debts.find(debt => 
-        debt.customer.toLowerCase().includes(customerName.toLowerCase()) ||
-        customerName.toLowerCase().includes(debt.customer.toLowerCase())
-    );
-    
-    if (customerDebt && customerDebt.amount > 0) {
-        receipt += `\nDENI LINALODAIWA:\n`;
-        receipt += `══════════════════════\n`;
-        receipt += `${formatCurrency(customerDebt.amount)}\n`;
-        receipt += `Tarehe ya kuanza: ${customerDebt.date}\n`;
-        if (customerDebt.phone) {
-            receipt += `Simu: ${customerDebt.phone}\n`;
-        }
-    }
-    
-    receipt += `\n────────────────────\n`;
-    receipt += `Asante kwa kuwa mteja wetu!\n`;
-    receipt += `Imetolewa na BizBook\n`;
-    
-    // Create downloadable file
-    const blob = new Blob([receipt], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `risiti-${customerName.replace(/\s+/g, '-')}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    // Ask if want to send via WhatsApp
-    if (confirm(`✅ Risiti ya ${customerName} imepakuliwa!\n\nUnataka kumtumia kwa WhatsApp?`)) {
-        const phone = customerDebt?.phone || prompt(`Namba ya ${customerName}:`, "");
-        if (phone && phone.length >= 9) {
-            window.open(`https://wa.me/${phone}?text=${encodeURIComponent(receipt)}`, '_blank');
-        }
-    }
-}
-
-function generateStockReport() {
-    let report = `📦 RIPOTI YA BIDHAA\n`;
-    report += `Tarehe: ${new Date().toLocaleDateString('sw-TZ')}\n`;
-    report += `══════════════════════\n\n`;
-    
-    report += `BIDHAA ZOTE:\n`;
-    report += `══════════════════════\n`;
-    
-    if (stock.length === 0) {
-        report += `Hakuna bidhaa zilizosajiliwa\n`;
-    } else {
-        // Sort by quantity (lowest first)
-        const sortedStock = [...stock].sort((a, b) => a.quantity - b.quantity);
-        
-        sortedStock.forEach(item => {
-            const stockValue = item.quantity * item.price;
-            const stockCost = item.quantity * item.cost;
-            const profitIfSold = stockValue - stockCost;
-            
-            report += `${item.name}\n`;
-            report += `  Idadi: ${item.quantity}${item.unit}\n`;
-            report += `  Bei: ${formatCurrency(item.price)}/${item.unit}\n`;
-            report += `  Gharama: ${formatCurrency(item.cost)}/${item.unit}\n`;
-            report += `  Thamani ya hisa: ${formatCurrency(stockValue)}\n`;
-            report += `  Faida ya hisa: ${formatCurrency(profitIfSold)}\n`;
-            
-            if (item.quantity <= item.minStock) {
-                report += `  ⚠️  Inahitaji kununua: ${item.orderQuantity || (item.minStock * 3 - item.quantity)}${item.unit}\n`;
-            }
-            
-            report += `\n`;
-        });
-        
-        // Summary
-        const totalStockValue = stock.reduce((sum, item) => sum + (item.quantity * item.price), 0);
-        const totalStockCost = stock.reduce((sum, item) => sum + (item.quantity * item.cost), 0);
-        const totalPotentialProfit = totalStockValue - totalStockCost;
-        
-        report += `JUMLA YA HISABATI:\n`;
-        report += `══════════════════════\n`;
-        report += `Thamani ya bidhaa zote: ${formatCurrency(totalStockValue)}\n`;
-        report += `Gharama ya bidhaa zote: ${formatCurrency(totalStockCost)}\n`;
-        report += `Faida inayoweza kupatikana: ${formatCurrency(totalPotentialProfit)}\n`;
-    }
-    
-    report += `\n────────────────────\n`;
-    report += `Imetolewa na: BizBook\n`;
-    report += `${new Date().toLocaleString('sw-TZ')}\n`;
-    
-    // Create downloadable file
-    const blob = new Blob([report], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `hisabati-${new Date().toISOString().split('T')[0]}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    alert("✅ Ripoti ya bidhaa imepakuliwa!");
-}
-
 function exportMenu() {
     const choice = prompt(
         `📤 CHAGUA AINA YA RIPOTI:\n\n1. Ripoti ya Leo (mauzo, matumizi, faida)\n2. Ripoti ya Mteja (historia ya manunuzi)\n3. Ripoti ya Bidhaa (hisabati zote)\n4. Data yote (JSON - kwa kompyuta)\n\nIngiza namba (1-4):`,
@@ -1319,6 +972,57 @@ function exportMenu() {
         case "4": exportData(); break;
         default: break;
     }
+}
+
+// =========== UTILITY FUNCTIONS ===========
+function formatCurrency(amount) {
+    return new Intl.NumberFormat('sw-TZ', {
+        style: 'currency',
+        currency: 'TZS',
+        minimumFractionDigits: 0
+    }).format(amount);
+}
+
+function generateDailyReceipt() {
+    const today = new Date().toLocaleDateString('sw-TZ');
+    const todaySales = sales.filter(sale => new Date(sale.date).toDateString() === new Date().toDateString());
+    const totalSales = todaySales.reduce((sum, sale) => sum + sale.total, 0);
+    const expenses = cash.expenses || 0;
+    const profit = totalSales - expenses;
+    
+    let receipt = `📊 RIPOTI YA LEO\nTarehe: ${today}\n══════════════════════\n\nMAUZO YA LEO:\n══════════════════════\n`;
+    
+    if (todaySales.length === 0) {
+        receipt += `Hakuna mauzo leo\n`;
+    } else {
+        const productSales = {};
+        todaySales.forEach(sale => {
+            if (!productSales[sale.product]) productSales[sale.product] = { quantity: 0, total: 0 };
+            productSales[sale.product].quantity += sale.quantity;
+            productSales[sale.product].total += sale.total;
+        });
+        
+        Object.entries(productSales).forEach(([product, data]) => {
+            receipt += `${product}: ${data.quantity} × ${formatCurrency(data.total / data.quantity)} = ${formatCurrency(data.total)}\n`;
+        });
+        receipt += `\nJumla Mauzo: ${formatCurrency(totalSales)}\n`;
+    }
+    
+    receipt += `\nMATUMIZI YA LEO:\n══════════════════════\n${formatCurrency(expenses)}\n`;
+    receipt += `\nFEDHA:\n══════════════════════\nAsubuhi: ${formatCurrency(cash.morning || 0)}\nMauzo: ${formatCurrency(totalSales)}\nMatumizi: ${formatCurrency(expenses)}\n────────────────────\nJioni (inapaswa kuwa): ${formatCurrency((cash.morning || 0) + totalSales - expenses)}\n`;
+    receipt += `\nFAIDA YA LEO:\n══════════════════════\nMauzo: ${formatCurrency(totalSales)}\n- Matumizi: ${formatCurrency(expenses)}\n────────────────────\nFAIDA: ${formatCurrency(profit)}\n`;
+    
+    const blob = new Blob([receipt], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ripoti-${today.replace(/\//g, '-')}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    if (confirm("✅ Ripoti imepakuliwa!\n\nUnataka kuiona hapa?")) alert(receipt);
 }
 
 function exportData() {
@@ -1341,9 +1045,9 @@ function exportData() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    }
+}
 
-    // =========== INITIAL LOAD ===========
+// =========== INITIAL LOAD ===========
 refreshStock();
 refreshSales();
 refreshCash();
@@ -1353,8 +1057,13 @@ refreshBuyList();
 document.getElementById('morning-cash').addEventListener('input', updateCashCalculation);
 document.getElementById('expenses').addEventListener('input', updateCashCalculation);
 
-console.log('📱 BizBook loaded with smart stock system and carton management!');
+// Check if app is running as PWA
+if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+    console.log('📱 BizBook running as installed PWA');
+    document.querySelector('header h1').innerHTML = '📓 BizBook <small style="font-size: 0.6rem;">(App)</small>';
+}
+
+console.log('📱 BizBook PWA v1.2 loaded with carton management!');
 </script>
 </body>
 </html>
-    
