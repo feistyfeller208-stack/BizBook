@@ -1,1069 +1,498 @@
 <!DOCTYPE html>
-<html lang="sw">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BizBook - Business Ledger</title>
     
     <!-- PWA Meta Tags -->
-    <link rel="manifest" href="manifest.json">
+    <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#2E8B57">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="icon" type="image/png" href="icons/icon-192x192.png">
-    <link rel="apple-touch-icon" href="icons/icon-192x192.png">
     
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
         body { background: #f5f5f5; color: #333; padding-bottom: 80px; }
-        header { background: linear-gradient(135deg, #2E8B57 0%, #228B22 100%); color: white; padding: 15px; text-align: center; }
-        h1 { font-size: 1.4rem; }
-        .tabs { display: flex; background: white; border-bottom: 2px solid #2E8B57; }
-        .tab-btn { flex: 1; padding: 12px 5px; border: none; background: white; font-size: 0.8rem; color: #555; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 5px; }
-        .tab-btn.active { background: #2E8B57; color: white; font-weight: bold; }
+        
+        /* Language Toggle */
+        .language-toggle {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 20px;
+            padding: 5px;
+            display: flex;
+            gap: 5px;
+        }
+        .lang-btn {
+            background: transparent;
+            border: none;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        .lang-btn.active {
+            background: white;
+            color: #2E8B57;
+            font-weight: bold;
+        }
+        
+        header { 
+            background: linear-gradient(135deg, #2E8B57 0%, #228B22 100%); 
+            color: white; 
+            padding: 20px 15px 15px; 
+            text-align: center;
+            position: relative;
+        }
+        h1 { font-size: 1.5rem; margin-bottom: 5px; }
+        .subtitle { font-size: 0.9rem; opacity: 0.9; }
+        
+        .tabs { 
+            display: flex; 
+            background: white; 
+            border-bottom: 2px solid #2E8B57; 
+        }
+        .tab-btn { 
+            flex: 1; 
+            padding: 12px 5px; 
+            border: none; 
+            background: white; 
+            font-size: 0.85rem; 
+            color: #555; 
+            cursor: pointer; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            gap: 5px; 
+        }
+        .tab-btn.active { 
+            background: #2E8B57; 
+            color: white; 
+            font-weight: bold; 
+        }
+        
         .tab-content { display: none; padding: 15px; }
         .tab-content.active { display: block; }
-        .card { background: white; border-radius: 10px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .card h3 { color: #2E8B57; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #eee; }
-        .item { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: #f9f9f9; border-radius: 5px; border-left: 4px solid #2E8B57; margin-bottom: 10px; cursor: pointer; transition: all 0.2s; }
-        .item:hover { background: #e8f5e9; transform: translateY(-2px); }
+        
+        .card { 
+            background: white; 
+            border-radius: 10px; 
+            padding: 15px; 
+            margin-bottom: 15px; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); 
+        }
+        .card h3 { 
+            color: #2E8B57; 
+            margin-bottom: 15px; 
+            padding-bottom: 10px; 
+            border-bottom: 1px solid #eee; 
+            font-size: 1.1rem;
+        }
+        
+        .item { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            padding: 12px; 
+            background: #f9f9f9; 
+            border-radius: 8px; 
+            border-left: 4px solid #2E8B57; 
+            margin-bottom: 10px; 
+            cursor: pointer; 
+            transition: all 0.2s; 
+        }
+        .item:hover { 
+            background: #e8f5e9; 
+            transform: translateY(-2px); 
+            box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+        }
+        
         .item-info { display: flex; flex-direction: column; }
-        .item-name { font-weight: bold; }
-        .item-detail { font-size: 0.9rem; color: #666; }
-        .item-amount { font-weight: bold; color: #2E8B57; }
-        .btn { background: #2E8B57; color: white; border: none; padding: 12px 20px; border-radius: 5px; font-size: 1rem; cursor: pointer; width: 100%; margin-top: 10px; }
-        .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
-        .stat { background: white; padding: 15px; border-radius: 8px; text-align: center; }
-        .stat-value { font-size: 1.5rem; font-weight: bold; color: #2E8B57; }
-        .action-bar { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 10px; display: flex; gap: 10px; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); }
-        .action-btn { flex: 1; padding: 12px; background: #2E8B57; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        .hidden { display: none !important; }
-        input, select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 5px; margin-bottom: 10px; }
-        .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; margin-left: 5px; }
+        .item-name { font-weight: bold; font-size: 1rem; }
+        .item-detail { font-size: 0.85rem; color: #666; margin-top: 3px; }
+        .item-amount { font-weight: bold; color: #2E8B57; font-size: 1.1rem; }
+        
+        .btn { 
+            background: #2E8B57; 
+            color: white; 
+            border: none; 
+            padding: 14px 20px; 
+            border-radius: 8px; 
+            font-size: 1rem; 
+            cursor: pointer; 
+            width: 100%; 
+            margin-top: 10px; 
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        .btn:hover { background: #26734a; }
+        .btn-secondary { 
+            background: #3498db; 
+            margin-top: 8px; 
+        }
+        .btn-secondary:hover { background: #2980b9; }
+        
+        .stats { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 10px; 
+            margin-bottom: 15px; 
+        }
+        .stat { 
+            background: white; 
+            padding: 15px; 
+            border-radius: 8px; 
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .stat-value { 
+            font-size: 1.6rem; 
+            font-weight: bold; 
+            color: #2E8B57; 
+        }
+        .stat-label { 
+            font-size: 0.9rem; 
+            color: #666; 
+            margin-top: 5px;
+        }
+        
+        .action-bar { 
+            position: fixed; 
+            bottom: 0; 
+            left: 0; 
+            right: 0; 
+            background: white; 
+            padding: 12px; 
+            display: flex; 
+            gap: 10px; 
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            border-top: 1px solid #eee;
+        }
+        .action-btn { 
+            flex: 1; 
+            padding: 14px; 
+            background: #2E8B57; 
+            color: white; 
+            border: none; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+        
+        input, select { 
+            width: 100%; 
+            padding: 14px; 
+            border: 1px solid #ddd; 
+            border-radius: 8px; 
+            margin-bottom: 12px; 
+            font-size: 1rem;
+        }
+        
+        .badge { 
+            display: inline-block; 
+            padding: 3px 10px; 
+            border-radius: 12px; 
+            font-size: 0.75rem; 
+            margin-left: 8px; 
+            font-weight: 600;
+        }
         .badge-danger { background: #e74c3c; color: white; }
         .badge-warning { background: #f39c12; color: white; }
         .badge-success { background: #2ecc71; color: white; }
         
-        /* Install Prompt */
-        #installPrompt { 
-            position: fixed; 
-            bottom: 80px; 
-            left: 10px; 
-            right: 10px; 
-            background: white; 
-            padding: 15px; 
-            border-radius: 10px; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2); 
-            z-index: 1000; 
+        /* Modal for product form */
+        .modal {
             display: none;
-            border: 2px solid #2E8B57;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
         }
-        #installPrompt button { 
-            background: #2E8B57; 
-            color: white; 
-            border: none; 
-            padding: 10px; 
-            border-radius: 5px; 
-            margin-top: 10px; 
-            width: 100%; 
-            font-weight: bold;
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            width: 100%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal-title {
+            color: #2E8B57;
+            margin-bottom: 20px;
+            font-size: 1.3rem;
+            text-align: center;
+        }
+        .modal-step {
+            display: none;
+        }
+        .modal-step.active {
+            display: block;
+        }
+        .option-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin: 20px 0;
+        }
+        .option-btn {
+            padding: 15px;
+            border: 2px solid #eee;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: center;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .option-btn:hover {
+            border-color: #2E8B57;
+            background: #f8fff9;
+        }
+        .option-btn.selected {
+            border-color: #2E8B57;
+            background: #e8f5e9;
+            color: #2E8B57;
+        }
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .form-actions .btn {
+            margin: 0;
         }
     </style>
 </head>
 <body>
-    <div id="installPrompt">
-        <strong>📱 Install BizBook App</strong>
-        <p>Install for faster access and offline use!</p>
-        <button id="installBtn">Install Now</button>
-        <button id="cancelInstall" style="background: #666; margin-top: 5px;">Later</button>
+    <!-- Language Toggle -->
+    <div class="language-toggle">
+        <button class="lang-btn active" data-lang="en">EN</button>
+        <button class="lang-btn" data-lang="sw">SW</button>
     </div>
     
     <header>
-        <h1>📓 BizBook</h1>
-        <div style="font-size: 0.8rem; opacity: 0.9;">Business Ledger for Shops</div>
+        <h1 id="app-title">BizBook</h1>
+        <div class="subtitle" id="app-subtitle">Business Ledger for Shops</div>
     </header>
     
+    <!-- Tabs Navigation -->
     <div class="tabs">
-        <button class="tab-btn active" data-tab="bidhaa"><span>📦</span><span>Products</span></button>
-        <button class="tab-btn" data-tab="mauzo"><span>💰</span><span>Sales</span></button>
-        <button class="tab-btn" data-tab="fedha"><span>🏦</span><span>Cash</span></button>
-        <button class="tab-btn" data-tab="deni"><span>📝</span><span>Debts</span></button>
-        <button class="tab-btn" data-tab="nunua"><span>🚚</span><span>Buy</span></button>
+        <button class="tab-btn active" data-tab="products">
+            <span>📦</span>
+            <span id="tab-products">Products</span>
+        </button>
+        <button class="tab-btn" data-tab="sales">
+            <span>💰</span>
+            <span id="tab-sales">Sales</span>
+        </button>
+        <button class="tab-btn" data-tab="cash">
+            <span>🏦</span>
+            <span id="tab-cash">Cash</span>
+        </button>
+        <button class="tab-btn" data-tab="debts">
+            <span>📝</span>
+            <span id="tab-debts">Debts</span>
+        </button>
+        <button class="tab-btn" data-tab="buy">
+            <span>🚚</span>
+            <span id="tab-buy">Buy</span>
+        </button>
     </div>
     
-    <div id="bidhaa" class="tab-content active">
+    <!-- Products Tab -->
+    <div id="products" class="tab-content active">
         <div class="card">
-            <h3>📦 Your Products</h3>
-            <div class="item-list" id="stock-list"></div>
-            <button class="btn" onclick="addProductWithUnits()">+ Add Product</button>
-            <button class="btn" onclick="addCartonProduct()" style="margin-top: 5px; background: #3498db;">+ Add Carton Product</button>
+            <h3 id="products-title">📦 Your Products</h3>
+            <div class="item-list" id="stock-list">
+                <!-- Products will be loaded here -->
+            </div>
+            <button class="btn" id="add-product-btn">
+                + Add Product
+            </button>
         </div>
     </div>
     
-    <div id="mauzo" class="tab-content">
+    <!-- Sales Tab -->
+    <div id="sales" class="tab-content">
         <div class="stats">
-            <div class="stat"><div class="stat-value" id="today-sales">TZS 0</div><div class="stat-label">Today's Sales</div></div>
-            <div class="stat"><div class="stat-value" id="sales-count">0</div><div class="stat-label">Customers</div></div>
+            <div class="stat">
+                <div class="stat-value" id="today-sales">TZS 0</div>
+                <div class="stat-label" id="today-sales-label">Today's Sales</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="sales-count">0</div>
+                <div class="stat-label" id="customers-label">Customers</div>
+            </div>
         </div>
         <div class="card">
-            <h3>💰 Today's Sales</h3>
+            <h3 id="sales-title">💰 Today's Sales</h3>
             <div class="item-list" id="sales-list"></div>
         </div>
     </div>
     
-    <div id="fedha" class="tab-content">
+    <!-- Cash Tab -->
+    <div id="cash" class="tab-content">
         <div class="card">
-            <h3>🏦 Cash Box</h3>
+            <h3 id="cash-title">🏦 Cash Box</h3>
             <input type="number" id="morning-cash" placeholder="Morning Cash">
-            <div class="item"><div class="item-info"><div class="item-name">Today's Sales</div></div><div class="item-amount" id="cash-sales-total">TZS 0</div></div>
-            <input type="number" id="expenses" placeholder="Today's Expenses">
-            <div class="item"><div class="item-info"><div class="item-name">Evening Cash</div></div><div class="item-amount" id="expected-cash">TZS 0</div></div>
-            <button class="btn" onclick="saveCash()">💾 Save Cash</button>
-        </div>
-    </div>
-    
-    <div id="deni" class="tab-content">
-        <div class="card">
-            <h3>📝 Money Owed</h3>
-            <div class="item-list" id="debt-list"></div>
-            <button class="btn" onclick="addDebtUSSD()">➕ Add Debt</button>
-        </div>
-    </div>
-    
-    <div id="nunua" class="tab-content">
-        <div class="card">
-            <h3>🚚 Need to Buy</h3>
-            <div class="item-list" id="buy-list"></div>
-            <div class="item"><div class="item-info"><div class="item-name">Approx Cost</div></div><div class="item-amount" id="total-cost">TZS 0</div></div>
-            <button class="btn" onclick="createSmartOrder()">📱 Create Order</button>
-        </div>
-    </div>
-    
-    <div class="action-bar">
-        <button class="action-btn" onclick="quickSale()">💰 Quick Sale</button>
-        <button class="action-btn" onclick="quickExpense()">📝 Expense</button>
-        <button class="action-btn" onclick="exportMenu()">📤 Export</button>
-    </div>
-
-        <script>
-// =========== PWA INSTALL PROMPT ===========
-let deferredPrompt;
-const installPrompt = document.getElementById('installPrompt');
-const installBtn = document.getElementById('installBtn');
-const cancelInstall = document.getElementById('cancelInstall');
-
-// Show install prompt when available
-window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-    
-    // Show prompt after 3 seconds
-    setTimeout(() => {
-        if (localStorage.getItem('bizbook_install_dismissed') !== 'true') {
-            installPrompt.style.display = 'block';
-        }
-    }, 3000);
-});
-
-installBtn.addEventListener('click', async () => {
-    if (!deferredPrompt) return;
-    
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    
-    if (outcome === 'accepted') {
-        console.log('User installed BizBook');
-        installPrompt.style.display = 'none';
-    }
-    
-    deferredPrompt = null;
-});
-
-cancelInstall.addEventListener('click', () => {
-    installPrompt.style.display = 'none';
-    localStorage.setItem('bizbook_install_dismissed', 'true');
-});
-
-// Register Service Worker
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js')
-            .then(registration => {
-                console.log('✅ Service Worker registered:', registration.scope);
-                
-                // Check for updates
-                registration.addEventListener('updatefound', () => {
-                    const newWorker = registration.installing;
-                    console.log('🔄 New service worker found:', newWorker);
-                    
-                    newWorker.addEventListener('statechange', () => {
-                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                            console.log('🔄 New version available! Refresh to update.');
-                            if (confirm('New version available! Refresh now?')) {
-                                window.location.reload();
-                            }
-                        }
-                    });
-                });
-            })
-            .catch(error => {
-                console.log('❌ Service Worker registration failed:', error);
-            });
-    });
-}
-
-// =========== DATA STORAGE ===========
-function saveData(key, data) { 
-    localStorage.setItem(key, JSON.stringify(data)); 
-}
-
-function loadData(key) { 
-    const data = localStorage.getItem(key); 
-    return data ? JSON.parse(data) : []; 
-}
-
-let stock = loadData('bizbook_stock') || [];
-let sales = loadData('bizbook_sales') || [];
-let debts = loadData('bizbook_debts') || [];
-let cash = loadData('bizbook_cash') || { morning: 0, expenses: 0 };
-
-if (stock.length === 0) {
-    stock = [
-        { id: 1, name: "Soda", quantity: 24, price: 1000, cost: 700, minStock: 10, unit: "vipande", orderQuantity: 24 },
-        { id: 2, name: "Water", quantity: 12, price: 500, cost: 300, minStock: 5, unit: "vipande", orderQuantity: 12 },
-        { id: 3, name: "Beans", quantity: 100, price: 2500, cost: 2000, minStock: 20, unit: "kilo", orderQuantity: 50 }
-    ];
-    saveData('bizbook_stock', stock);
-}
-
-// =========== TAB SWITCHING ===========
-document.querySelectorAll('.tab-btn').forEach(button => {
-    button.addEventListener('click', () => {
-        const tabId = button.getAttribute('data-tab');
-        
-        document.querySelectorAll('.tab-btn').forEach(btn => {
-            btn.classList.remove('active');
-        });
-        button.classList.add('active');
-        
-        document.querySelectorAll('.tab-content').forEach(content => {
-            content.classList.remove('active');
-        });
-        document.getElementById(tabId).classList.add('active');
-        
-        if (tabId === 'bidhaa') refreshStock();
-        if (tabId === 'mauzo') refreshSales();
-        if (tabId === 'fedha') refreshCash();
-        if (tabId === 'deni') refreshDebts();
-        if (tabId === 'nunua') refreshBuyList();
-    });
-});
-
-// =========== PRODUCT MANAGEMENT WITH UNITS & CARTONS ===========
-function refreshStock() {
-    const stockList = document.getElementById('stock-list');
-    
-    if (stock.length === 0) {
-        stockList.innerHTML = '<div style="color: #666; padding: 20px; text-align: center;">No products. Click "Add Product" to start.</div>';
-        return;
-    }
-    
-    stockList.innerHTML = stock.map(item => {
-        // CARTON PRODUCT DISPLAY
-        if (item.cartonSize) {
-            const fullCartons = Math.floor((item.quantity - (item.openItems || 0)) / item.cartonSize);
-            const itemType = item.itemType || "item";
-            
-            let badge = '';
-            if (item.quantity === 0) {
-                badge = '<span class="badge badge-danger">Empty!</span>';
-            } else if (item.quantity <= item.minStock) {
-                badge = '<span class="badge badge-warning">Reorder</span>';
-            }
-            
-            return `
-                <div class="item" onclick="sellCartonProduct(${item.id})">
-                    <div class="item-info">
-                        <div class="item-name">${item.name} 📦 ${badge}</div>
-                        <div class="item-detail">
-                            ${item.quantity} ${itemType}s total<br>
-                            ${fullCartons} full cartons + ${item.openItems || 0} open ${itemType}s<br>
-                            Sell: ${formatCurrency(item.price)}/${itemType} | ${formatCurrency(item.price * item.cartonSize)}/carton
-                        </div>
-                    </div>
-                    <div class="item-amount">
-                        ${fullCartons}📦<br>
-                        ${item.openItems || 0}🟢
-                    </div>
-                </div>
-            `;
-        }
-        
-        // REGULAR PRODUCT DISPLAY
-        let badge = '';
-        const stockPercent = (item.quantity / item.minStock) * 100;
-        
-        if (item.quantity === 0) {
-            badge = '<span class="badge badge-danger">Empty!</span>';
-        } else if (item.quantity <= item.minStock * 0.5) {
-            badge = '<span class="badge badge-danger">Low!</span>';
-        } else if (item.quantity <= item.minStock) {
-            badge = '<span class="badge badge-warning">Reorder</span>';
-        } else if (stockPercent < 150) {
-            badge = '<span class="badge badge-success">OK</span>';
-        }
-        
-        return `
-            <div class="item" onclick="showProductMenu(${item.id})">
+            <div class="item">
                 <div class="item-info">
-                    <div class="item-name">${item.name} ${badge}</div>
-                    <div class="item-detail">
-                        ${item.quantity}${item.unit || ''} | 
-                        Sell: ${formatCurrency(item.price)}/${item.unit || 'unit'} |
-                        Min: ${item.minStock || 0}${item.unit || ''}
-                    </div>
+                    <div class="item-name" id="cash-sales-label">Today's Sales</div>
                 </div>
-                <div class="item-amount">${item.quantity}</div>
+                <div class="item-amount" id="cash-sales-total">TZS 0</div>
             </div>
-        `;
-    }).join('');
-}
-
-function addProductWithUnits() {
-    const name = prompt("Product name:", "Soda");
-    if (!name) return;
+            <input type="number" id="expenses" placeholder="Today's Expenses">
+            <div class="item">
+                <div class="item-info">
+                    <div class="item-name" id="evening-cash-label">Evening Cash</div>
+                </div>
+                <div class="item-amount" id="expected-cash">TZS 0</div>
+            </div>
+            <button class="btn" onclick="saveCash()" id="save-cash-btn">
+                💾 Save Cash
+            </button>
+        </div>
+    </div>
     
-    const unitType = prompt(
-        "How do you measure?\n1. Pieces (soda, biscuits)\n2. Kilos (beans, sugar)\n3. Bottles/Cartons (water, soda)\n4. Liters (oil, water)\n5. Bags (flour, rice)\n\nEnter number (1-5):",
-        "1"
-    );
+    <!-- Debts Tab -->
+    <div id="debts" class="tab-content">
+        <div class="card">
+            <h3 id="debts-title">📝 Money Owed</h3>
+            <div class="item-list" id="debt-list"></div>
+            <button class="btn" onclick="addDebt()" id="add-debt-btn">
+                ➕ Add Debt
+            </button>
+        </div>
+    </div>
     
-    const units = ['vipande', 'kilo', 'kopo', 'lita', 'mfuko'];
-    const unit = units[parseInt(unitType) - 1] || 'vipande';
+    <!-- Buy Tab -->
+    <div id="buy" class="tab-content">
+        <div class="card">
+            <h3 id="buy-title">🚚 Need to Buy</h3>
+            <div class="item-list" id="buy-list"></div>
+            <div class="item">
+                <div class="item-info">
+                    <div class="item-name" id="approx-cost-label">Approx Cost</div>
+                </div>
+                <div class="item-amount" id="total-cost">TZS 0</div>
+            </div>
+            <button class="btn" onclick="createOrder()" id="create-order-btn">
+                📱 Create Order
+            </button>
+        </div>
+    </div>
     
-    const quantity = parseFloat(prompt(`Quantity in ${unit}:`, unit === 'vipande' ? "24" : "100")) || 0;
-    const cost = parseInt(prompt(`Purchase price per ${unit} (TZS):`, unit === 'vipande' ? "700" : "2000")) || 0;
-    const price = parseInt(prompt(`Selling price per ${unit} (TZS):`, unit === 'vipande' ? "1000" : "2500")) || 0;
+    <!-- Bottom Action Bar -->
+    <div class="action-bar">
+        <button class="action-btn" onclick="quickSale()" id="quick-sale-btn">
+            💰 Quick Sale
+        </button>
+        <button class="action-btn" onclick="quickExpense()" id="quick-expense-btn">
+            📝 Expense
+        </button>
+        <button class="action-btn" onclick="exportMenu()" id="export-btn">
+            📤 Export
+        </button>
+    </div>
     
-    // Set smart default min stock based on unit type
-    let minStock;
-    if (unit === 'kilo' || unit === 'lita') {
-        minStock = Math.ceil(quantity * 0.2); // 20% for bulk
-    } else if (unit === 'kopo' || unit === 'cartoni') {
-        minStock = Math.ceil(quantity * 0.1); // 10% for packaged
-    } else {
-        minStock = Math.ceil(quantity * 0.3); // 30% for pieces
-    }
-    
-    // Set default order quantity
-    const orderQuantity = quantity;
-    
-    stock.push({
-        id: Date.now(),
-        name: name,
-        quantity: quantity,
-        price: price,
-        cost: cost,
-        minStock: minStock,
-        unit: unit,
-        orderQuantity: orderQuantity,
-        streetLogic: `${minStock}${unit} → ${orderQuantity}${unit}`
-    });
-    
-    saveData('bizbook_stock', stock);
-    refreshStock();
-    refreshBuyList();
-    
-    alert(`✅ ${name} added!\n${quantity}${unit}\nCost: ${formatCurrency(cost)}/${unit}\nSell: ${formatCurrency(price)}/${unit}`);
-}
-
-    // =========== CARTON PRODUCT MANAGEMENT ===========
-function addCartonProduct() {
-    const name = prompt("Product name:", "Porcelain Cups");
-    
-    const itemsPerCarton = parseInt(prompt("Items in one carton:", "24")) || 24;
-    const cartonCost = parseInt(prompt("Cost per CARTON (TZS):", "24000")) || 0;
-    const itemPrice = parseInt(prompt("Selling price per ITEM (TZS):", "1500")) || 0;
-    
-    // Calculate cost per item
-    const costPerItem = cartonCost / itemsPerCarton;
-    
-    // Ask initial stock
-    const cartonsInStock = parseInt(prompt("How many cartons do you have?", "10")) || 0;
-    const totalItems = cartonsInStock * itemsPerCarton;
-    
-    // Ask open items (items sold individually from opened cartons)
-    const openItems = parseInt(prompt("How many items are already opened/sold individually?", "0")) || 0;
-    
-    stock.push({
-        id: Date.now(),
-        name: name,
-        quantity: totalItems, // Total items in stock
-        price: itemPrice,     // Sell per item
-        cost: costPerItem,    // Cost per item
-        minStock: itemsPerCarton * 2, // Reorder when 2 cartons worth left
-        
-        // Carton tracking
-        unit: "vipande",      // Sell as individual items
-        cartonSize: itemsPerCarton,
-        cartonCost: cartonCost,
-        wholeCartons: cartonsInStock - Math.ceil(openItems / itemsPerCarton),
-        openItems: openItems % itemsPerCarton,
-        itemType: prompt("What type of item? (cup, bowl, pen, etc.):", "cup"),
-        
-        // Smart info
-        profitPerItem: itemPrice - costPerItem,
-        profitPerCarton: (itemPrice - costPerItem) * itemsPerCarton
-    });
-    
-    saveData('bizbook_stock', stock);
-    refreshStock();
-    
-    alert(`✅ ${name} added!\n${cartonsInStock} cartons (${totalItems} items)\nBuy carton: ${formatCurrency(cartonCost)}\nSell per item: ${formatCurrency(itemPrice)}\nProfit/carton: ${formatCurrency((itemPrice - costPerItem) * itemsPerCarton)}`);
-}
-
-function sellCartonProduct(productId) {
-    const product = stock.find(p => p.id === productId);
-    if (!product || !product.cartonSize) return makeSaleWithUnits(productId);
-    
-    const customer = prompt("Customer name:", "Customer");
-    const itemName = product.itemType || "item";
-    
-    const saleType = prompt(
-        `Sell ${product.name} as:\n1. Single ${itemName}\n2. Whole carton (${product.cartonSize} ${itemName}s)\n3. Multiple ${itemName}s\n\nEnter choice:`,
-        "1"
-    );
-    
-    let quantity;
-    let unit;
-    
-    switch(saleType) {
-        case "1": // Single item
-            quantity = 1;
-            unit = itemName;
-            break;
+    <!-- Product Form Modal -->
+    <div id="product-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-title" id="modal-title">Add Product</div>
             
-        case "2": // Whole carton
-            quantity = product.cartonSize;
-            unit = "carton";
-            // Update carton count
-            if (product.wholeCartons > 0) {
-                product.wholeCartons -= 1;
-            } else {
-                // Convert open items to carton sale
-                product.openItems = product.cartonSize - quantity;
-            }
-            break;
-            
-        case "3": // Multiple items
-            quantity = parseInt(prompt(`How many ${itemName}s? (Available: ${product.quantity}):`, "2")) || 0;
-            unit = itemName + "s";
-            break;
-            
-        default:
-            return;
-    }
-    
-    if (quantity > product.quantity) {
-        alert(`Only ${product.quantity} ${itemName}s available!`);
-        return;
-    }
-    
-    const total = quantity * product.price;
-    
-    // Update stock
-    product.quantity -= quantity;
-    
-    // Update open items logic
-    if (product.openItems >= quantity) {
-        product.openItems -= quantity;
-    } else {
-        const remaining = quantity - product.openItems;
-        product.openItems = product.cartonSize - (remaining % product.cartonSize);
-        if (product.openItems === product.cartonSize) product.openItems = 0;
-    }
-    
-    // Auto-open new carton if needed
-    if (product.openItems > 0 && product.wholeCartons > 0 && product.openItems === product.cartonSize) {
-        product.wholeCartons -= 1;
-        product.openItems = 0;
-    }
-    
-    const sale = {
-        id: Date.now(),
-        customer: customer,
-        product: product.name,
-        quantity: quantity,
-        unit: unit,
-        total: total,
-        cartonSale: saleType === "2",
-        date: new Date().toISOString(),
-        time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
-    };
-    
-    sales.push(sale);
-    saveData('bizbook_sales', sales);
-    saveData('bizbook_stock', stock);
-    
-    refreshSales();
-    refreshStock();
-    updateCashCalculation();
-    
-    const message = saleType === "2" 
-        ? `✅ ${customer} bought 1 carton of ${product.name} (${quantity} ${itemName}s) = ${formatCurrency(total)}`
-        : `✅ ${customer} bought ${quantity} ${unit} of ${product.name} = ${formatCurrency(total)}`;
-    
-    alert(message);
-}
-
-function showProductMenu(productId) {
-    const product = stock.find(p => p.id === productId);
-    if (!product) return;
-    
-    const action = prompt(
-        `${product.name}\nQuantity: ${product.quantity}${product.unit}\nPrice: ${formatCurrency(product.price)}/${product.unit}\nMin stock: ${product.minStock}${product.unit}\n\nChoose:\n1. Make sale\n2. Change price\n3. Change quantity\n4. Set reorder logic\n5. Remove product\n\nEnter number (1-5):`,
-        "1"
-    );
-    
-    switch(action) {
-        case "1": 
-            if (product.cartonSize) {
-                sellCartonProduct(productId);
-            } else {
-                makeSaleWithUnits(productId);
-            }
-            break;
-        case "2": changeProductPrice(productId); break;
-        case "3": changeProductQuantity(productId); break;
-        case "4": setupSmartStock(productId); break;
-        case "5": deleteProduct(productId); break;
-        default: break;
-    }
-}
-
-function makeSaleWithUnits(productId) {
-    const product = stock.find(p => p.id === productId);
-    if (!product) return;
-    
-    const customer = prompt(`Customer buys ${product.name}. Customer name:`, "Customer");
-    if (!customer) return;
-    
-    const quantity = parseFloat(prompt(
-        `${product.name} (available: ${product.quantity}${product.unit})\nPrice: ${formatCurrency(product.price)}/${product.unit}\n\nQuantity in ${product.unit}:`,
-        product.unit === 'vipande' ? "1" : product.unit === 'kilo' ? "0.5" : "1"
-    )) || 0;
-    
-    if (quantity > product.quantity) {
-        alert(`Only ${product.quantity}${product.unit} of ${product.name} available!`);
-        return;
-    }
-    
-    const total = quantity * product.price;
-    
-    const newSale = {
-        id: Date.now(),
-        customer: customer,
-        product: product.name,
-        quantity: quantity,
-        unit: product.unit,
-        total: total,
-        date: new Date().toISOString(),
-        time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
-    };
-    
-    sales.push(newSale);
-    saveData('bizbook_sales', sales);
-    
-    product.quantity -= quantity;
-    saveData('bizbook_stock', stock);
-    
-    refreshSales();
-    refreshStock();
-    refreshBuyList();
-    updateCashCalculation();
-    
-    alert(`✅ ${customer} bought ${product.name} × ${quantity}${product.unit} = ${formatCurrency(total)}`);
-}
-
-function changeProductPrice(productId) {
-    const product = stock.find(p => p.id === productId);
-    if (!product) return;
-    
-    const newPrice = parseInt(prompt(`New price for ${product.name} per ${product.unit} (current: ${formatCurrency(product.price)}/${product.unit}):`, product.price));
-    if (newPrice && newPrice > 0) {
-        product.price = newPrice;
-        saveData('bizbook_stock', stock);
-        refreshStock();
-        alert(`✅ Price of ${product.name} changed: ${formatCurrency(newPrice)}/${product.unit}`);
-    }
-}
-
-function changeProductQuantity(productId) {
-    const product = stock.find(p => p.id === productId);
-    if (!product) return;
-    
-    const newQuantity = parseFloat(prompt(`New quantity for ${product.name} in ${product.unit} (current: ${product.quantity}${product.unit}):`, product.quantity));
-    if (!isNaN(newQuantity) && newQuantity >= 0) {
-        product.quantity = newQuantity;
-        saveData('bizbook_stock', stock);
-        refreshStock();
-        refreshBuyList();
-        alert(`✅ Quantity of ${product.name} changed: ${newQuantity}${product.unit}`);
-    }
-}
-
-function deleteProduct(productId) {
-    if (!confirm("Are you sure you want to delete this product?")) return;
-    
-    const productIndex = stock.findIndex(p => p.id === productId);
-    if (productIndex !== -1) {
-        const productName = stock[productIndex].name;
-        stock.splice(productIndex, 1);
-        saveData('bizbook_stock', stock);
-        refreshStock();
-        refreshBuyList();
-        alert(`✅ ${productName} deleted`);
-    }
-            }
-
-        // =========== SMART STOCK SYSTEM ===========
-function setupSmartStock(productId) {
-    const product = stock.find(p => p.id === productId);
-    if (!product) return;
-    
-    alert(`${product.name} (${product.quantity}${product.unit})`);
-    
-    const logic = prompt(
-        `FOR ${product.name.toUpperCase()}:\n\nWhen should you reorder?\n\nExample:\n- Soda: "I have 24, I reorder when I have 10"\n- Beans: "I have 100kg, I reorder when I have 20kg"\n- Water: "I have 50 bottles, I reorder when I have 15"\n\nEnter YOUR minimum level:`,
-        product.minStock || Math.ceil(product.quantity * 0.2)
-    );
-    
-    const minStock = parseInt(logic) || product.minStock;
-    
-    const orderAmount = prompt(
-        `When you have ${minStock}${product.unit}, how much do you buy?\n\nExample:\n- Small shop: "I buy 24 again (soda)"\n- Big shop: "I buy 100 again (soda)"\n- Farmer: "I buy 50kg again (beans)"\n\nEnter AMOUNT you buy at once:`,
-        product.orderQuantity || product.quantity
-    );
-    
-    const orderQuantity = parseInt(orderAmount) || product.orderQuantity;
-    
-    product.minStock = minStock;
-    product.orderQuantity = orderQuantity;
-    product.streetLogic = `${minStock}${product.unit} → ${orderQuantity}${product.unit}`;
-    
-    saveData('bizbook_stock', stock);
-    refreshStock();
-    
-    alert(`✅ Set!\n\n${product.name}:\n• Reorder when: ${minStock}${product.unit}\n• Order amount: ${orderQuantity}${product.unit}\n\nSystem will remind you!`);
-}
-
-function refreshBuyList() {
-    const buyList = document.getElementById('buy-list');
-    let itemsToBuy = [];
-    let totalCost = 0;
-    
-    stock.forEach(item => {
-        if (item.quantity <= item.minStock) {
-            const needed = item.orderQuantity || (item.minStock * 3 - item.quantity);
-            const cost = needed * item.cost;
-            
-            itemsToBuy.push({
-                id: item.id,
-                name: item.name,
-                needed: needed,
-                unit: item.unit,
-                current: item.quantity,
-                minStock: item.minStock,
-                cost: cost,
-                streetLogic: item.streetLogic || `${item.minStock}${item.unit} → ${needed}${item.unit}`
-            });
-            
-            totalCost += cost;
-        }
-    });
-    
-    document.getElementById('total-cost').textContent = formatCurrency(totalCost);
-    
-    if (itemsToBuy.length === 0) {
-        buyList.innerHTML = '<div style="color: #666; padding: 20px; text-align: center;">Nothing to buy now</div>';
-        return;
-    }
-    
-    buyList.innerHTML = itemsToBuy.map(item => `
-        <div class="item" onclick="showBuyOptions('${item.name}')">
-            <div class="item-info">
-                <div class="item-name">${item.name}</div>
-                <div class="item-detail">
-                    <strong>Now: ${item.current}${item.unit}</strong><br>
-                    <small>${item.streetLogic}</small><br>
-                    <small style="color: #e74c3c;">Need: ${item.needed}${item.unit}</small>
+            <!-- Step 1: Product Name -->
+            <div id="step1" class="modal-step active">
+                <input type="text" id="product-name" placeholder="Product Name" autofocus>
+                <div class="form-actions">
+                    <button class="btn" onclick="nextStep(2)" id="next-step1-btn">
+                        Next →
+                    </button>
                 </div>
             </div>
-            <div class="item-amount">${formatCurrency(item.cost)}</div>
-        </div>
-    `).join('');
-}
-
-function createSmartOrder() {
-    let itemsToBuy = [];
-    let totalCost = 0;
-    let supplierMessage = "";
-    
-    stock.forEach(item => {
-        if (item.quantity <= item.minStock) {
-            const needed = item.orderQuantity || (item.minStock * 3 - item.quantity);
-            const cost = needed * item.cost;
             
-            let orderText;
-            if (item.unit === 'kilo') {
-                orderText = `${item.name}: ${needed}kg`;
-            } else if (item.unit === 'lita') {
-                orderText = `${item.name}: ${needed}lita`;
-            } else if (item.unit === 'kopo') {
-                orderText = `${item.name}: ${needed}kopo`;
-            } else {
-                orderText = `${item.name}: ${needed}`;
-            }
-            
-            itemsToBuy.push({
-                name: item.name,
-                needed: needed,
-                unit: item.unit,
-                cost: cost,
-                orderText: orderText
-            });
-            
-            totalCost += cost;
-            supplierMessage += `• ${orderText}\n`;
-        }
-    });
-    
-    if (itemsToBuy.length === 0) {
-        alert('Nothing to buy now');
-        return;
-    }
-    
-    const supplier = prompt(
-        `Buy from who?\n1. Bwana Juma\n2. Soda Business\n3. Other supplier\n\nEnter number or name:`,
-        "Bwana Juma"
-    );
-    
-    let supplierName = supplier;
-    if (supplier === '1') supplierName = "Bwana Juma";
-    if (supplier === '2') supplierName = "Soda Business";
-    
-    const message = `Habari ${supplierName},\n\nI need to buy:\n${supplierMessage}\nApprox total: ${formatCurrency(totalCost)}\n\nWhen can I pay you?`;
-    
-    const supplierPhone = prompt(
-        `${supplierName}'s phone (can leave empty):`,
-        "0712xxxxxx"
-    );
-    
-    if (supplierPhone && supplierPhone.length >= 9) {
-        window.open(`https://wa.me/${supplierPhone}?text=${encodeURIComponent(message)}`, '_blank');
-    } else {
-        navigator.clipboard.writeText(message);
-        alert(`✅ Order copied to clipboard!\n\nPaste in WhatsApp to ${supplierName}`);
-    }
-}
-
-// =========== SALES, CASH, DEBT FUNCTIONS ===========
-function refreshSales() {
-    const today = new Date().toDateString();
-    const todaySales = sales.filter(sale => new Date(sale.date).toDateString() === today);
-    const totalSales = todaySales.reduce((sum, sale) => sum + sale.total, 0);
-    
-    document.getElementById('today-sales').textContent = formatCurrency(totalSales);
-    document.getElementById('sales-count').textContent = todaySales.length;
-    document.getElementById('cash-sales-total').textContent = formatCurrency(totalSales);
-    
-    const salesList = document.getElementById('sales-list');
-    if (todaySales.length === 0) {
-        salesList.innerHTML = '<div style="color: #666; padding: 20px; text-align: center;">No sales today</div>';
-        return;
-    }
-    
-    salesList.innerHTML = todaySales.map(sale => `
-        <div class="item" onclick="showSaleMenu(${sale.id})">
-            <div class="item-info">
-                <div class="item-name">${sale.customer}</div>
-                <div class="item-detail">${sale.product} × ${sale.quantity}${sale.unit || ''} | ${sale.time}</div>
+            <!-- Step 2: How Product is Sold -->
+            <div id="step2" class="modal-step">
+                <div style="text-align: center; margin-bottom: 20px; font-size: 1.1rem; font-weight: 600;" id="step2-question">
+                    How is this product sold?
+                </div>
+                <div class="option-grid">
+                    <button class="option-btn" data-type="weight" onclick="selectSaleType('weight')">
+                        ⚖️ <br>
+                        <span id="option-weight">Weight</span>
+                    </button>
+                    <button class="option-btn" data-type="volume" onclick="selectSaleType('volume')">
+                        📊 <br>
+                        <span id="option-volume">Volume</span>
+                    </button>
+                    <button class="option-btn" data-type="pieces" onclick="selectSaleType('pieces')">
+                        🔢 <br>
+                        <span id="option-pieces">Pieces</span>
+                    </button>
+                    <button class="option-btn" data-type="length" onclick="selectSaleType('length')">
+                        📏 <br>
+                        <span id="option-length">Length</span>
+                    </button>
+                    <button class="option-btn" data-type="packaging" onclick="selectSaleType('packaging')">
+                        📦 <br>
+                        <span id="option-packaging">From Packaging</span>
+                    </button>
+                    <button class="option-btn" data-type="other" onclick="selectSaleType('other')">
+                        ✨ <br>
+                        <span id="option-other">Other</span>
+                    </button>
+                </div>
+                <div class="form-actions">
+                    <button class="btn" onclick="prevStep(1)" style="background: #666;">
+                        ← Back
+                    </button>
+                    <button class="btn" onclick="nextStep(3)" id="next-step2-btn" disabled>
+                        Next →
+                    </button>
+                </div>
             </div>
-            <div class="item-amount">${formatCurrency(sale.total)}</div>
-        </div>
-    `).join('');
-    
-    updateCashCalculation();
-}
-
-function refreshCash() {
-    const todaySales = sales.filter(sale => 
-        new Date(sale.date).toDateString() === new Date().toDateString()
-    );
-    const totalSales = todaySales.reduce((sum, sale) => sum + sale.total, 0);
-    
-    document.getElementById('morning-cash').value = cash.morning || '';
-    document.getElementById('expenses').value = cash.expenses || '';
-    document.getElementById('cash-sales-total').textContent = formatCurrency(totalSales);
-    
-    updateCashCalculation();
-}
-
-function updateCashCalculation() {
-    const morningCash = parseFloat(document.getElementById('morning-cash').value) || 0;
-    const todaySales = sales.filter(sale => 
-        new Date(sale.date).toDateString() === new Date().toDateString()
-    );
-    const totalSales = todaySales.reduce((sum, sale) => sum + sale.total, 0);
-    const expenses = parseFloat(document.getElementById('expenses').value) || 0;
-    
-    const expectedCash = morningCash + totalSales - expenses;
-    document.getElementById('expected-cash').textContent = formatCurrency(expectedCash);
-}
-
-function saveCash() {
-    const morningCash = parseFloat(document.getElementById('morning-cash').value) || 0;
-    const expenses = parseFloat(document.getElementById('expenses').value) || 0;
-    
-    cash = {
-        morning: morningCash,
-        expenses: expenses,
-        lastUpdated: new Date().toISOString()
-    };
-    
-    saveData('bizbook_cash', cash);
-    alert('✅ Cash saved!');
-}
-
-function refreshDebts() {
-    const debtList = document.getElementById('debt-list');
-    
-    if (debts.length === 0) {
-        debtList.innerHTML = '<div style="color: #666; padding: 20px; text-align: center;">No debts</div>';
-        return;
-    }
-    
-    debtList.innerHTML = debts.map(debt => `
-        <div class="item" onclick="showDebtMenu(${debt.id})">
-            <div class="item-info">
-                <div class="item-name">${debt.customer}</div>
-                <div class="item-detail">${debt.date} ${debt.phone ? `| ${debt.phone}` : ''}</div>
+            
+            <!-- Step 3: Sub-type Selection (Weight, Volume, etc) -->
+            <div id="step3" class="modal-step">
+                <div style="text-align: center; margin-bottom: 20px; font-size: 1.1rem; font-weight: 600;" id="step3-question">
+                    Select measurement unit
+                </div>
+                <div class="option-grid" id="subtype-options">
+                    <!-- Will be populated dynamically -->
+                </div>
+                <div class="form-actions">
+                    <button class="btn" onclick="prevStep(2)" style="background: #666;">
+                        ← Back
+                    </button>
+                    <button class="btn" onclick="nextStep(4)" id="next-step3-btn" disabled>
+                        Next →
+                    </button>
+                </div>
             </div>
-            <div class="item-amount">${formatCurrency(debt.amount)}</div>
+            
+            <!-- Step 4: Product Details -->
+            <div id="step4" class="modal-step">
+                <div id="step4-dynamic">
+                    <!-- Will be populated based on product type -->
+                </div>
+                <div class="form-actions">
+                    <button class="btn" onclick="prevStep(3)" style="background: #666;">
+                        ← Back
+                    </button>
+                    <button class="btn" onclick="saveProduct()" id="save-product-btn">
+                        💾 Save Product
+                    </button>
+                </div>
+            </div>
         </div>
-    `).join('');
-}
-
-function addDebtUSSD() {
-    const customer = prompt("Customer name:", "Customer");
-    if (!customer) return;
-    
-    const amount = parseInt(prompt(`Debt amount (TZS):`, "5000")) || 0;
-    const phone = prompt("Customer phone (optional):", "") || "";
-    
-    if (!customer || amount <= 0) {
-        alert("Enter customer name and debt amount");
-        return;
-    }
-    
-    debts.push({
-        id: Date.now(),
-        customer: customer,
-        amount: amount,
-        phone: phone,
-        date: new Date().toLocaleDateString('sw-TZ')
-    });
-    
-    saveData('bizbook_debts', debts);
-    refreshDebts();
-    
-    if (phone && confirm("Send WhatsApp message?")) {
-        const message = `Hello ${customer}, your debt is ${formatCurrency(amount)}. Please pay.`;
-        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
-    }
-    
-    alert(`✅ ${formatCurrency(amount)} debt added for ${customer}`);
-}
-
-// =========== QUICK FUNCTIONS ===========
-function quickSale() {
-    if (stock.length === 0) {
-        alert('First add products in "Products" tab');
-        return;
-    }
-    
-    const customer = prompt('Customer name:', 'Customer');
-    const productNames = stock.map(item => item.name).join(', ');
-    const productName = prompt(`Which product? (${productNames}):`);
-    
-    const product = stock.find(item => item.name.toLowerCase() === productName?.toLowerCase());
-    if (!product) {
-        alert('Product not found');
-        return;
-    }
-    
-    const quantity = parseFloat(prompt(`Quantity of ${product.name} in ${product.unit}:`, product.unit === 'vipande' ? "1" : "0.5")) || 0;
-    
-    if (quantity > product.quantity) {
-        alert(`Only ${product.quantity}${product.unit} of ${product.name} available`);
-        return;
-    }
-    
-    const total = quantity * product.price;
-    
-    const newSale = {
-        id: Date.now(),
-        customer: customer,
-        product: product.name,
-        quantity: quantity,
-        unit: product.unit,
-        total: total,
-        date: new Date().toISOString(),
-        time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
-    };
-    
-    sales.push(newSale);
-    saveData('bizbook_sales', sales);
-    
-    product.quantity -= quantity;
-    saveData('bizbook_stock', stock);
-    
-    refreshSales();
-    refreshStock();
-    refreshBuyList();
-    updateCashCalculation();
-    
-    alert(`✅ ${customer}: ${product.name} × ${quantity}${product.unit} = ${formatCurrency(total)}`);
-}
-
-function quickExpense() {
-    const amount = parseFloat(prompt('Expense amount (TZS):', '')) || 0;
-    const reason = prompt('Reason:', '') || 'Expense';
-    
-    if (amount <= 0) {
-        alert('Enter amount');
-        return;
-    }
-    
-    const currentExpenses = cash.expenses || 0;
-    cash.expenses = currentExpenses + amount;
-    saveData('bizbook_cash', cash);
-    
-    document.getElementById('expenses').value = cash.expenses;
-    updateCashCalculation();
-    
-    alert(`✅ ${reason}: ${formatCurrency(amount)} added`);
-}
-
-function exportMenu() {
-    const choice = prompt(
-        `📤 CHAGUA AINA YA RIPOTI:\n\n1. Ripoti ya Leo (mauzo, matumizi, faida)\n2. Ripoti ya Mteja (historia ya manunuzi)\n3. Ripoti ya Bidhaa (hisabati zote)\n4. Data yote (JSON - kwa kompyuta)\n\nIngiza namba (1-4):`,
-        "1"
-    );
-    
-    switch(choice) {
-        case "1": generateDailyReceipt(); break;
-        case "2": 
-            const customerName = prompt("Jina la mteja:", "");
-            if (customerName) generateCustomerReceipt(customerName);
-            break;
-        case "3": generateStockReport(); break;
-        case "4": exportData(); break;
-        default: break;
-    }
-}
-
-// =========== UTILITY FUNCTIONS ===========
-function formatCurrency(amount) {
-    return new Intl.NumberFormat('sw-TZ', {
-        style: 'currency',
-        currency: 'TZS',
-        minimumFractionDigits: 0
-    }).format(amount);
-}
-
-function generateDailyReceipt() {
-    const today = new Date().toLocaleDateString('sw-TZ');
-    const todaySales = sales.filter(sale => new Date(sale.date).toDateString() === new Date().toDateString());
-    const totalSales = todaySales.reduce((sum, sale) => sum + sale.total, 0);
-    const expenses = cash.expenses || 0;
-    const profit = totalSales - expenses;
-    
-    let receipt = `📊 RIPOTI YA LEO\nTarehe: ${today}\n══════════════════════\n\nMAUZO YA LEO:\n══════════════════════\n`;
-    
-    if (todaySales.length === 0) {
-        receipt += `Hakuna mauzo leo\n`;
-    } else {
-        const productSales = {};
-        todaySales.forEach(sale => {
-            if (!productSales[sale.product]) productSales[sale.product] = { quantity: 0, total: 0 };
-            productSales[sale.product].quantity += sale.quantity;
-            productSales[sale.product].total += sale.total;
-        });
-        
-        Object.entries(productSales).forEach(([product, data]) => {
-            receipt += `${product}: ${data.quantity} × ${formatCurrency(data.total / data.quantity)} = ${formatCurrency(data.total)}\n`;
-        });
-        receipt += `\nJumla Mauzo: ${formatCurrency(totalSales)}\n`;
-    }
-    
-    receipt += `\nMATUMIZI YA LEO:\n══════════════════════\n${formatCurrency(expenses)}\n`;
-    receipt += `\nFEDHA:\n══════════════════════\nAsubuhi: ${formatCurrency(cash.morning || 0)}\nMauzo: ${formatCurrency(totalSales)}\nMatumizi: ${formatCurrency(expenses)}\n────────────────────\nJioni (inapaswa kuwa): ${formatCurrency((cash.morning || 0) + totalSales - expenses)}\n`;
-    receipt += `\nFAIDA YA LEO:\n══════════════════════\nMauzo: ${formatCurrency(totalSales)}\n- Matumizi: ${formatCurrency(expenses)}\n────────────────────\nFAIDA: ${formatCurrency(profit)}\n`;
-    
-    const blob = new Blob([receipt], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `ripoti-${today.replace(/\//g, '-')}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    if (confirm("✅ Ripoti imepakuliwa!\n\nUnataka kuiona hapa?")) alert(receipt);
-}
-
-function exportData() {
-    const allData = {
-        stock: stock,
-        sales: sales,
-        debts: debts,
-        cash: cash,
-        exported: new Date().toISOString()
-    };
-    
-    const dataStr = JSON.stringify(allData, null, 2);
-    const dataBlob = new Blob([dataStr], {type: 'application/json'});
-    const url = URL.createObjectURL(dataBlob);
-    
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `bizbook-data-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-}
-
-// =========== INITIAL LOAD ===========
-refreshStock();
-refreshSales();
-refreshCash();
-refreshDebts();
-refreshBuyList();
-
-document.getElementById('morning-cash').addEventListener('input', updateCashCalculation);
-document.getElementById('expenses').addEventListener('input', updateCashCalculation);
-
-// Check if app is running as PWA
-if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
-    console.log('📱 BizBook running as installed PWA');
-    document.querySelector('header h1').innerHTML = '📓 BizBook <small style="font-size: 0.6rem;">(App)</small>';
-}
-
-console.log('📱 BizBook PWA v1.2 loaded with carton management!');
-</script>
-</body>
-</html>
+    </div>
