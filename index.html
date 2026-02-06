@@ -101,7 +101,7 @@
         <button class="action-btn" onclick="quickSale()">💰 Quick Sale</button>
         <button class="action-btn" onclick="quickExpense()">📝 Expense</button>
         <button class="action-btn" onclick="exportData()">📤 Export</button>
-        </div>
+    </div>
 
         <script>
 // =========== DATA STORAGE ===========
@@ -275,9 +275,7 @@ function addWeightProduct() {
     alert(`✅ ${name} added!\n${cartonsInStock} cartons (${totalItems} items)\nBuy carton: ${formatCurrency(cartonCost)}\nSell per item: ${formatCurrency(itemPrice)}`);
 }
 
-// Add other product type functions (volume, length, custom) similarly...
-
-            // =========== PRODUCT DISPLAY (WITH CARTON SUPPORT) ===========
+// =========== PRODUCT DISPLAY (WITH CARTON SUPPORT) ===========
 function refreshStock() {
     const stockList = document.getElementById('stock-list');
     
@@ -496,7 +494,7 @@ function showCartonDetails(productId) {
         `• Open items: ${product.openItems || 0}\n` +
         `• Reorder at: ${product.minStock} items`
     );
-            }
+    }
 
             // =========== ORIGINAL WORKING FUNCTIONS ===========
 function makeSaleWithUnits(productId) {
@@ -619,7 +617,7 @@ function setupSmartStock(productId) {
     refreshStock();
     
     alert(`✅ Set!\n\n${product.name}:\n• Reorder when: ${minStock}${product.unit}\n• Order amount: ${orderQuantity}${product.unit}\n\nSystem will remind you!`);
-            }
+    }
 
 // =========== SMART STOCK SYSTEM ===========
 function refreshBuyList() {
