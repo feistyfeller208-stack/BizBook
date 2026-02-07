@@ -990,13 +990,212 @@ function quickExpense() {
 }
 
 function exportData() {
+    const exportType = prompt(
+        "📤 Export as:\n\n" +
+        "1. 📄 SIMPLE RECEIPT (for today only)\n" +
+        "2. 📋 DAILY REPORT (sales + cash summary)\n" +
+        "3. 📊 STOCK REPORT (what to buy)\n" +
+        "4. 📈 BUSINESS REPORT (all data for accountant)\n\n" +
+        "Enter number (1-4):",
+        "1"
+    );
+    
+    switch(exportType) {
+        case "1": exportSimpleReceipt(); break;
+        case "2": exportDailyReport(); break;
+        case "3": exportStockReport(); break;
+        case "4": exportBusinessReport(); break;
+        default: exportSimpleReceipt(); break;
+    }
+}
+
+// 1. SIMPLE RECEIPT - For giving to customers or quick reference
+function exportSimpleReceipt() {
+    const today = new Date().toLocaleDateString('sw-TZ');
+    const todaySales = sales.filter(sale => 
+        new Date(sale.date).toDateString() === new Date().toDateString()
+    );
+    
+    let receipt = `╔══════════════════════════════╗\n`;
+    receipt += `║      📓 BIZBOOK RECEIPT       ║\n`;
+    receipt += `║      ${today}       ║\n`;
+    receipt += `╠══════════════════════════════╣\n`;
+    receipt += `║                              ║\n`;
+    
+    if (todaySales.length === 0) {
+        receipt += `║   Hakuna mauzo leo           ║\n`;
+    } else {
+        let total = 0;
+        todaySales.forEach(sale => {
+            receipt += `║ ${sale.product} × ${sale.quantity}${sale.unit}\n`;
+            receipt += `║   ${sale.customer}: ${formatCurrency(sale.total)}\n`;
+            total += sale.total;
+        });
+        receipt += `╠══════════════════════════════╣\n`;
+        receipt += `║ JUMLA: ${formatCurrency(total).padStart(20)} ║\n`;
+    }
+    
+    receipt += `╚══════════════════════════════╝\n`;
+    receipt += `\n📞 Call: _________________\n💬 Note: _________________\n`;
+    
+    // Copy to clipboard AND show on screen
+    navigator.clipboard.writeText(receipt);
+    alert(`✅ Receipt copied!\n\n${receipt}`);
+}
+
+function exportDailyReport() {
+    const today = new Date().toLocaleDateString('sw-TZ');
+    const todaySales = sales.filter(sale => 
+        new Date(sale.date).toDateString() === new Date().toDateString()
+    );
+    const totalSales = todaySales.reduce((sum, sale) => sum + sale.total, 0);
+    
+    let report = `=== BIZBOOK DAILY REPORT ===\n`;
+    report += `Date: ${today}\n`;
+    report += `═`.repeat(35) + `\n\n`;
+    
+    report += `📦 MORNING CASH: ${formatCurrency(cash.morning || 0)}\n`;
+    report += `💰 TODAY'S SALES:\n`;
+    report += `─`.repeat(35) + `\n`;
+    
+    if (todaySales.length === 0) {
+        report += `No sales today\n`;
+    } else {
+        todaySales.forEach(sale => {
+            report += `• ${sale.time} - ${sale.customer}\n`;
+            report += `  ${sale.product} × ${sale.quantity}${sale.unit}\n`;
+            report += `  ${formatCurrency(sale.total)}\n\n`;
+        });
+    }
+    
+    report += `═`.repeat(35) + `\n`;
+    report += `TOTAL SALES: ${formatCurrency(totalSales)}\n`;
+    report += `EXPENSES: ${formatCurrency(cash.expenses || 0)}\n`;
+    report += `─`.repeat(35) + `\n`;
+    report += `EXPECTED CASH: ${formatCurrency((cash.morning || 0) + totalSales - (cash.expenses || 0))}\n`;
+    report += `═`.repeat(35) + `\n`;
+    
+    // WhatsApp-friendly format
+    const whatsappReport = `*BIZBOOK REPORT - ${today}*\n\n` +
+                          `Morning Cash: ${formatCurrency(cash.morning || 0)}\n` +
+                          `Total Sales: ${formatCurrency(totalSales)}\n` +
+                          `Expenses: ${formatCurrency(cash.expenses || 0)}\n` +
+                          `Expected Cash: ${formatCurrency((cash.morning || 0) + totalSales - (cash.expenses || 0))}\n\n` +
+                          `Customers: ${todaySales.length}`;
+    
+    const sendToWhatsapp = confirm(`✅ Daily report ready!\n\nSend to WhatsApp?`);
+    
+    if (sendToWhatsapp) {
+        const phone = prompt("Send to which number?", "2557xxxxxx");
+        if (phone) {
+            window.open(`https://wa.me/${phone}?text=${encodeURIComponent(whatsappReport)}`, '_blank');
+        }
+    } else {
+        navigator.clipboard.writeText(report);
+        alert(`✅ Daily report copied to clipboard!\n\n${report}`);
+    }
+}
+
+function exportStockReport() {
+    let report = `=== BIZBOOK STOCK REPORT ===\n`;
+    report += `Date: ${new Date().toLocaleDateString('sw-TZ')}\n`;
+    report += `═`.repeat(35) + `\n\n`;
+    
+    let needsReorder = [];
+    let totalCost = 0;
+    
+    stock.forEach(item => {
+        if (item.quantity <= item.minStock) {
+            const needed = item.orderQuantity || (item.minStock * 3 - item.quantity);
+            const cost = needed * item.cost;
+            
+            report += `⚠️ ${item.name}\n`;
+            report += `   Now: ${item.quantity}${item.unit}\n`;
+            report += `   Need: ${needed}${item.unit}\n`;
+            report += `   Cost: ${formatCurrency(cost)}\n\n`;
+            
+            needsReorder.push({
+                name: item.name,
+                needed: needed,
+                unit: item.unit,
+                cost: cost
+            });
+            
+            totalCost += cost;
+        }
+    });
+    
+    if (needsReorder.length === 0) {
+        report += `All stock OK 👍\n`;
+    } else {
+        report += `═`.repeat(35) + `\n`;
+        report += `TOTAL NEEDED: ${formatCurrency(totalCost)}\n`;
+        report += `ITEMS: ${needsReorder.length}\n`;
+    }
+    
+    // Create WhatsApp order message
+    if (needsReorder.length > 0) {
+        let orderMessage = `*ORDER LIST*\nDate: ${new Date().toLocaleDateString('sw-TZ')}\n\n`;
+        
+        needsReorder.forEach(item => {
+            orderMessage += `• ${item.name}: ${item.needed}${item.unit}\n`;
+        });
+        
+        orderMessage += `\nApprox Total: ${formatCurrency(totalCost)}`;
+        
+        const makeOrder = confirm(`${needsReorder.length} items need reorder.\n\nCreate WhatsApp order?`);
+        
+        if (makeOrder) {
+            const supplier = prompt("Supplier name:", "Bwana Juma");
+            const phone = prompt("Supplier WhatsApp:", "2557xxxxxx");
+            
+            if (phone) {
+                const finalMessage = `Habari ${supplier},\n\n${orderMessage}\n\nTunaweza lipa lini?`;
+                window.open(`https://wa.me/${phone}?text=${encodeURIComponent(finalMessage)}`, '_blank');
+            }
+        }
+    }
+    
+    navigator.clipboard.writeText(report);
+    alert(`✅ Stock report copied!\n\n${report}`);
+}
+
+function exportBusinessReport() {
     const allData = {
-        stock: stock,
-        sales: sales,
-        debts: debts,
-        cash: cash,
-        exported: new Date().toISOString()
+        "business_name": "BizBook Business",
+        "report_date": new Date().toLocaleString('sw-TZ'),
+        "cash_summary": {
+            "morning_cash": cash.morning || 0,
+            "total_expenses": cash.expenses || 0,
+            "current_cash": (cash.morning || 0) + 
+                           sales.filter(s => new Date(s.date).toDateString() === new Date().toDateString())
+                                .reduce((sum, s) => sum + s.total, 0) - 
+                           (cash.expenses || 0)
+        },
+        "today_sales": sales.filter(s => new Date(s.date).toDateString() === new Date().toDateString())
+                           .map(s => ({
+                               time: s.time,
+                               customer: s.customer,
+                               product: s.product,
+                               quantity: `${s.quantity}${s.unit}`,
+                               amount: s.total
+                           })),
+        "stock_status": stock.map(s => ({
+            product: s.name,
+            current: `${s.quantity}${s.unit}`,
+            min_level: `${s.minStock}${s.unit}`,
+            status: s.quantity <= s.minStock ? "NEED BUY" : "OK"
+        })),
+        "total_debts": debts.reduce((sum, d) => sum + d.amount, 0)
     };
+    
+    const readableReport = JSON.stringify(allData, null, 2)
+        .replace(/"/g, '')
+        .replace(/{/g, '')
+        .replace(/}/g, '')
+        .replace(/\[/g, '')
+        .replace(/\]/g, '')
+        .replace(/,/g, '\n');
     
     const dataStr = JSON.stringify(allData, null, 2);
     const dataBlob = new Blob([dataStr], {type: 'application/json'});
@@ -1004,12 +1203,15 @@ function exportData() {
     
     const a = document.createElement('a');
     a.href = url;
-    a.download = `bizbook-data-${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `bizbook-report-${new Date().toISOString().split('T')[0]}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-}
+    
+    alert(`✅ Business report saved as JSON\n\nAlso copied readable version to clipboard!`);
+    navigator.clipboard.writeText(readableReport);
+    }
 
 function formatCurrency(amount) {
     return new Intl.NumberFormat('sw-TZ', {
