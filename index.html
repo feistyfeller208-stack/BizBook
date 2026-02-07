@@ -451,6 +451,36 @@ function showBuyOptions(productName) {
     }
 }
 
+function showBuyOptions(productName) {
+    const product = stock.find(p => p.name === productName);
+    if (!product) return;
+    
+    const action = prompt(
+        `${product.name}\nNeed to buy: ${product.orderQuantity || (product.minStock * 3 - product.quantity)}${product.unit || ''}\nCost: ${formatCurrency((product.orderQuantity || (product.minStock * 3 - product.quantity)) * product.cost)}\n\nChoose:\n1. Create WhatsApp order\n2. Change order amount\n3. Mark as bought\n\nEnter number (1-3):`,
+        "1"
+    );
+    
+    switch(action) {
+        case "1": createSmartOrder(); break;
+        case "2": 
+            const newAmount = parseInt(prompt(`New order amount for ${product.name} (current: ${product.orderQuantity}${product.unit || ''}):`, product.orderQuantity));
+            if (newAmount && newAmount > 0) {
+                product.orderQuantity = newAmount;
+                saveData('bizbook_stock', stock);
+                refreshBuyList();
+                alert(`✅ Order amount updated: ${newAmount}${product.unit || ''}`);
+            }
+            break;
+        case "3":
+            product.quantity += (product.orderQuantity || (product.minStock * 3 - product.quantity));
+            saveData('bizbook_stock', stock);
+            refreshStock();
+            refreshBuyList();
+            alert(`✅ ${product.orderQuantity || (product.minStock * 3 - product.quantity)}${product.unit || ''} of ${product.name} added to stock`);
+            break;
+    }
+}
+
 function createSmartOrder() {
     let itemsToBuy = [];
     let totalCost = 0;
@@ -462,12 +492,10 @@ function createSmartOrder() {
             const cost = needed * item.cost;
             
             let orderText;
-            if (item.unit === 'kilo') {
+            if (item.unit === 'kg') {
                 orderText = `${item.name}: ${needed}kg`;
-            } else if (item.unit === 'lita') {
-                orderText = `${item.name}: ${needed}lita`;
-            } else if (item.unit === 'kopo') {
-                orderText = `${item.name}: ${needed}kopo`;
+            } else if (item.unit === 'liter') {
+                orderText = `${item.name}: ${needed}liter`;
             } else {
                 orderText = `${item.name}: ${needed}`;
             }
@@ -512,7 +540,7 @@ function createSmartOrder() {
         navigator.clipboard.writeText(message);
         alert(`✅ Order copied to clipboard!\n\nPaste in WhatsApp to ${supplierName}`);
     }
-}
+        }
 
 // =========== SALES MANAGEMENT ===========
 function refreshSales() {
