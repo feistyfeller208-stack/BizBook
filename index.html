@@ -132,13 +132,9 @@ let debts = loadData('bizbook_debts') || [];
 let cash = loadData('bizbook_cash') || { morning: 0, expenses: 0 };
 
 if (stock.length === 0) {
-    stock = [
-        { id: 1, name: "Soda", quantity: 24, price: 1000, cost: 700, minStock: 10, unit: "vipande", orderQuantity: 24 },
-        { id: 2, name: "Water", quantity: 12, price: 500, cost: 300, minStock: 5, unit: "vipande", orderQuantity: 12 },
-        { id: 3, name: "Beans", quantity: 100, price: 2500, cost: 2000, minStock: 20, unit: "kilo", orderQuantity: 50 }
-    ];
+    // Empty stock - user will add their own products
     saveData('bizbook_stock', stock);
-}
+            }
 
 document.querySelectorAll('.tab-btn').forEach(button => {
     button.addEventListener('click', () => {
