@@ -889,16 +889,22 @@ function refreshDebts() {
         return;
     }
     
+    // Sort by most recent first
+    debts.sort((a, b) => new Date(b.date) - new Date(a.date));
+    
     debtList.innerHTML = debts.map(debt => `
         <div class="item" onclick="showDebtMenu(${debt.id})">
             <div class="item-info">
                 <div class="item-name">${debt.customer}</div>
-                <div class="item-detail">${debt.date} ${debt.phone ? `| ${debt.phone}` : ''}</div>
+                <div class="item-detail">
+                    ${debt.date} ${debt.phone ? `| ${debt.phone}` : ''}
+                    ${debt.note ? `<br><small>${debt.note}</small>` : ''}
+                </div>
             </div>
             <div class="item-amount">${formatCurrency(debt.amount)}</div>
         </div>
     `).join('');
-}
+            }
 
 function addDebtUSSD() {
     const customer = prompt("Customer name:", "Customer");
