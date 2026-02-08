@@ -111,6 +111,10 @@ if ("serviceWorker" in navigator) {
     </div>
     
     <div class="action-bar">
+        <button class="action-btn" onclick="showMenu()">
+    <span>⋮</span>
+    <span>More</span>
+        </button>
         <button class="action-btn" onclick="quickSale()">💰 Quick Sale</button>
         <button class="action-btn" onclick="quickExpense()">📝 Expense</button>
         <button class="action-btn" onclick="exportData()">📤 Export</button>
@@ -1390,6 +1394,50 @@ function formatCurrency(amount) {
         minimumFractionDigits: 0
     }).format(amount);
 }
+
+// === MORE MENU ===
+function showMenu() {
+    const options = `
+1. 📖 Maagizo (Guide)
+2. 💾 Toa Backup
+3. 🗑️ Futa data ya mfano
+4. ℹ️ Kuhusu BizBook`;
+    
+    const choice = prompt("Chagua:", "1");
+    
+    switch(choice) {
+        case "1": showHelp(); break;
+        case "2": exportData(); break;
+        case "3": resetDemoData(); break;
+        case "4": showAbout(); break;
+    }
+}
+
+function resetDemoData() {
+    if (confirm("❌ Futa data yote ya mfano?\n\nHii itafuta bidhaa, mauzo, deni, na pesa.\n\nTUMAHALIKI: Data yako halisi itabaki!")) {
+        // Keep only real user data (not demo data)
+        const realData = {
+            stock: [],
+            sales: [],
+            debts: [],
+            cash: { morning: 0, expenses: 0 }
+        };
+        
+        // You might want to backup first
+        exportData();
+        
+        // Clear everything
+        localStorage.clear();
+        
+        // Reload page
+        alert("✅ Data ya mfano imefutwa!\n\nApp itaanzisha upya...");
+        location.reload();
+    }
+}
+
+function showAbout() {
+    alert(`💼 BIZBOOK v3.0\n\nApp ya kuendesha biashara yako\n• Bure kabisa\n• Offline\n• Inahifadhi kwenye simu\n\n👨‍💻 Developed by: Guy Fei\n\n📞 Support: +255759968552`);
+            }
 
 refreshStock();
 refreshSales();
