@@ -632,16 +632,16 @@
         }
 
         // === FIRST DAY ENGAGEMENT PUSH (After 1 hour) ===
-        setTimeout(() => {
-            const hasUsed = localStorage.getItem('first_sale_made');
-            if (!hasUsed && !localStorage.getItem('engagement_shown')) {
-                if (confirm("📢 Bado hujafanya mauzo? Jaribu "Quick Sale" sasa kuona jinsi BizBook inavyofanya kazi!")) {
-                    // Switch to Products tab
-                    document.querySelector('[data-tab="bidhaa"]').click();
-                }
-                localStorage.setItem('engagement_shown', 'true');
-            }
-        }, 3600000); // 1 hour
+setTimeout(() => {
+    const hasUsed = localStorage.getItem('first_sale_made');
+    if (!hasUsed && !localStorage.getItem('engagement_shown')) {
+        if (confirm("📢 Bado hujafanya mauzo? Jaribu 'Quick Sale' sasa kuona jinsi BizBook inavyofanya kazi!")) {
+            // Switch to Products tab
+            document.querySelector('[data-tab="bidhaa"]').click();
+        }
+        localStorage.setItem('engagement_shown', 'true');
+    }
+}, 3600000); // 1 hour
 
         // === MARKETPLACE FUNCTIONS ===
         function openMarketplace() {
@@ -2066,7 +2066,7 @@ Zipo kwenye menu ya kando!`);
         document.getElementById('expenses').addEventListener('input', updateCashCalculation);
 
         console.log('📱 BizBook v4 loaded!');
-    </script>
+        </script>
     
     <!-- Service Worker -->
     <script>
