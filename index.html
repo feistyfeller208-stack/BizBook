@@ -368,7 +368,7 @@
     </div>
 
     <!-- PRODUCTS TAB -->
-<div id="bidhaa" class="tab-content active">
+<div id="products" class="tab-content active">
     <div class="card">
         <h3>Your Products</h3>
         <div class="item-list" id="stock-list"></div>
@@ -377,7 +377,7 @@
 </div>
 
 <!-- SALES TAB -->
-<div id="mauzo" class="tab-content">
+<div id="sales" class="tab-content">
     <div class="stats">
         <div class="stat"><div class="stat-value" id="today-sales">TZS 0</div><div class="stat-label">Today's Sales</div></div>
         <div class="stat"><div class="stat-value" id="sales-count">0</div><div class="stat-label">Customers</div></div>
@@ -389,7 +389,7 @@
 </div>
 
 <!-- CASH TAB (Expense button moved here) -->
-<div id="fedha" class="tab-content">
+<div id="cash" class="tab-content">
     <div class="card">
         <h3>Cash Box</h3>
         <input type="number" id="morning-cash" placeholder="Morning Cash (TZS)">
@@ -402,15 +402,15 @@
             <div class="item-info"><div class="item-name">Evening Cash</div></div>
             <div class="item-amount" id="expected-cash">TZS 0</div>
         </div>
-        <button class="btn" onclick="saveCash()">💾 Save Cash</button>
+        <button class="btn" onclick="saveCash()">Save Cash</button>
         
         <!-- EXPENSE BUTTON MOVED HERE (below Save Cash) -->
-        <button class="btn" onclick="quickExpense()" style="margin-top: 10px; background: #f39c12;">📝 Add Expense</button>
+        <button class="btn" onclick="quickExpense()" style="margin-top: 10px; background: #f39c12;">Add Expense</button>
     </div>
 </div>
 
 <!-- DEBTS TAB -->
-<div id="deni" class="tab-content">
+<div id="debt" class="tab-content">
     <div class="card">
         <h3>Money Owed</h3>
         <div class="item-list" id="debt-list"></div>
@@ -419,7 +419,7 @@
 </div>
 
 <!-- BUY TAB -->
-<div id="nunua" class="tab-content">
+<div id="buy" class="tab-content">
     <div class="card">
         <h3>Need to Buy</h3>
         <div class="item-list" id="buy-list"></div>
@@ -434,7 +434,7 @@
 <!-- MARKETPLACE TAB (Hidden initially, shown via menu) -->
 <div id="marketplace" class="tab-content">
     <div class="card">
-        <h3>🛒 Marketplace</h3>
+        <h3>Marketplace</h3>
         
         <!-- Search & Add -->
         <div style="display: flex; gap: 10px; margin-bottom: 15px;">
@@ -444,17 +444,17 @@
         
         <!-- Quick Actions -->
 <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
-    <button class="btn-small" onclick="showRequestForm()" style="flex: 1;">📢 Weka Ombi</button>
-    <button class="btn-small" onclick="showAddSupplierForm()" style="flex: 1;">➕ Add Supplier</button>
+    <button class="btn-small" onclick="showRequestForm()" style="flex: 1;">Weka Ombi</button>
+    <button class="btn-small" onclick="showAddSupplierForm()" style="flex: 1;">Add Supplier</button>
 </div>
 
 <!-- NEW: Share Products Section -->
 <div style="background: #e8f5e9; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-    <div style="font-weight: bold; margin-bottom: 10px;">📤 Share Products to Suppliers</div>
+    <div style="font-weight: bold; margin-bottom: 10px;">Share Products to Suppliers</div>
     <p style="font-size: 0.9rem; color: #666; margin-bottom: 10px;">
         Chagua bidhaa moja au nyingi kutuma kwa wauzaji wako kupitia WhatsApp.
     </p>
-    <button class="btn-small" onclick="shareProductsToSuppliers()" style="width: 100%;">📤 Share Products Now</button>
+    <button class="btn-small" onclick="shareProductsToSuppliers()" style="width: 100%;">Share Products Now</button>
 </div>
         
         <!-- Tabs within Marketplace -->
@@ -467,8 +467,8 @@
         <!-- My Suppliers -->
         <div id="market-suppliers" class="market-section">
             <div id="supplier-list"></div>
-            <button class="btn" onclick="shareMySuppliers()" style="margin-top: 10px;">📤 Share Suppliers</button>
-            <button class="btn" onclick="importSuppliers()" style="margin-top: 10px;">📥 Import Suppliers</button>
+            <button class="btn" onclick="shareMySuppliers()" style="margin-top: 10px;">Share Suppliers</button>
+            <button class="btn" onclick="importSuppliers()" style="margin-top: 10px;">Import Suppliers</button>
         </div>
         
         <!-- Public Suppliers -->
@@ -482,7 +482,7 @@
         <!-- My Requests -->
         <div id="market-requests" class="market-section" style="display: none;">
             <div id="requests-list"></div>
-            <button class="btn" onclick="showRequestForm()" style="margin-top: 10px;">➕ Weka Ombi Jipya</button>
+            <button class="btn" onclick="showRequestForm()" style="margin-top: 10px;">Weka Ombi Jipya</button>
         </div>
     </div>
 </div>
